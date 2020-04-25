@@ -1,0 +1,7 @@
+[package]
+name = "stepper_servo_lib"
+version = "0.1.0"
+authors = ["SupaGait <gklomphaar@hotmail.com>"]
+edition = "2018"
+
+[dependencies]
