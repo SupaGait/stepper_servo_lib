@@ -30,8 +30,23 @@ impl Default for SerialCommands {
     }
 }
 
+enum CommandValueType {
+    IntType,
+    NoType,
+}
+
+struct CommandOption {
+    label: &'static str,
+    value_type: CommandValueType,
+}
+
 const CARRIAGE_RETURN_VALUE: u8 = b'\r';
-const LEFT: &str = "left";
+const COMMANDS_AVAILABLE: [CommandOption; 2] = [
+    CommandOption{label:"left", value_type:CommandValueType::NoType},
+    CommandOption{label:"right", value_type:CommandValueType::NoType},
+];
+
+//const LEFT: &str = "left";
 //const RIGHT: &str = "right";
 impl SerialCommands
     //where CB: FnMut(Command) -> ()
@@ -69,29 +84,39 @@ impl SerialCommands
             let right = &self.buffer[self.position..];
 
             // Arrange into the parse buffer.
-            right
-                .iter()
-                .chain(left.iter())
-                .zip(parse_buffer.iter_mut())
-                .for_each(|(data, parse_buffer)| *parse_buffer = *data);
-
-            if let Ok(parse_buffer) = str::from_utf8(&parse_buffer) {
-                let command_parts = parse_buffer.split_terminator(' ');
-                for command in command_parts {
-                    if let Some(_) = command.matches(LEFT).next() {
-                        self.command = Some(Command::Left(0));
-                    }
-                }
+            for (global_buffer, parse_buffer) in right.iter().chain(left.iter())
+                .zip(parse_buffer.iter_mut()) {
+                    *parse_buffer = *global_buffer;
             }
+
+            // Parse
+            self.parse_commands(&parse_buffer);
 
             // Clear the buffer
             self.buffer.iter_mut().for_each(|x| *x = 0);
         }
     }
 
-    //fn match_command(&mut self, parse_buffer: &[u8]) {
-        //let a = parse_buffer.iter().rmatches(char::is_numeric).collect();
-    //}
+    pub fn get_buffer(&self) ->&[u8] {
+        &self.buffer
+    }
+
+    fn parse_commands(&mut self, buffer: &[u8]) {
+        if let Ok(parse_buffer) = str::from_utf8(buffer) {
+            let command_parts = parse_buffer.split_terminator(
+                |c:char| !c.is_ascii_digit() && !c.is_ascii_alphanumeric());
+            for command in command_parts {
+                for available_commands in &COMMANDS_AVAILABLE
+                {
+                    if available_commands.label == command
+                    {
+                        self.command = Some(Command::Left(0));
+                    }
+                }
+            }
+        }
+
+    }
 }
 
 #[cfg(test)]
@@ -119,6 +144,19 @@ mod tests {
         assert_eq!(None, serial_commands.get_command());
     }
 
+    // #[test]
+    // fn check_arranged_buffer() {
+    //     // Register for the expected command
+    //     let mut serial_commands = SerialCommands::default();
+        
+    //     for data in b"left\r" {
+    //         serial_commands.add_character(*data);
+    //     }
+
+    //     assert_eq!(b"left\r", serial_commands.get_buffer());
+    // }
+
+
     #[test]
     fn parse_command_leading_chars() {
         // Register for the expected command
@@ -130,6 +168,17 @@ mod tests {
 
         assert_eq!(Some(Command::Left(0)), serial_commands.get_command());
         assert_eq!(None, serial_commands.get_command());
+    }
+
+
+    #[test]
+    fn debug_stuff() {
+        let parse_buffer = "left\r";
+        //let mut command_parts = parse_buffer.split_terminator(' ');
+         let command_parts = parse_buffer.split(
+             |c:char| !c.is_ascii_digit() && !c.is_ascii_alphanumeric());
+    
+        assert_eq!("left", command_parts.collect::<String>());
     }
 
     // #[test]
