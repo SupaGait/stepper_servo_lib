@@ -1,1 +1,3 @@
-mod serial_commands;
+#![cfg_attr(not(test), no_std)]
+
+pub mod serial_commands;
