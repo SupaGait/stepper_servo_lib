@@ -60,6 +60,9 @@ pub enum Command {
     Stop,
     Left { speed: i32 },
     Right { speed: i32 },
+    P(i32),
+    I(i32),
+    D(i32),
 }
 
 impl Command {
@@ -75,6 +78,9 @@ impl Command {
             Some("right") => Some(Command::Right {
                 speed: Command::with_value(command)?,
             }),
+            Some("p") => Some(Command::P(Command::with_value(command)?)),
+            Some("i") => Some(Command::I(Command::with_value(command)?)),
+            Some("d") => Some(Command::D(Command::with_value(command)?)),
             _ => None,
         }
     }
