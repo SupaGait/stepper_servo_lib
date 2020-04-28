@@ -66,6 +66,6 @@ mod tests {
         assert_eq!(0, motor_control.get_motor().current());
 
         motor_control.set_angle(360);
-        assert_eq!(180 / 2, motor_control.get_motor().current());
+        assert_eq!(-180 / 2, motor_control.get_motor().current());
     }
 }
