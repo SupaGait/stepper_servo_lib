@@ -57,7 +57,8 @@ impl Buffer {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Command {
-    Stop,
+    Enable,
+    Disable,
     Left { speed: i32 },
     Right { speed: i32 },
     P(i32),
@@ -71,7 +72,8 @@ impl Command {
         I: Iterator<Item = &'a str>,
     {
         match command.next() {
-            Some("stop") => Some(Command::Stop),
+            Some("enable") => Some(Command::Enable),
+            Some("disable") => Some(Command::Disable),
             Some("left") => Some(Command::Left {
                 speed: Command::with_value(command)?,
             }),

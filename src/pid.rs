@@ -128,10 +128,10 @@ where
             prev_value: None,
             prev_error: None,
 
-            i_min: T::max_value(),
+            i_min: T::min_value(),
             i_max: T::max_value(),
 
-            out_min: T::max_value(),
+            out_min: T::min_value(),
             out_max: T::max_value(),
 
             d_mode: DerivativeMode::OnMeasurement,
