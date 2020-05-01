@@ -7,8 +7,8 @@ pub trait CurrentOutput {
     fn enable(&mut self, enable: bool);
 }
 
-const CURRENT_BUFFER_SIZE: usize = 5;
-const PID_SCALING_FACTOR: i32 = 10000;
+const CURRENT_BUFFER_SIZE: usize = 3;
+const PID_SCALING_FACTOR: i32 = 1000;
 const PID_DT_SCALE_FACTOR: u32 = 100;
 
 /// For now hard bound to ADC1
@@ -37,13 +37,12 @@ impl<T: CurrentOutput> CurrentControl<T> {
             output,
             //output_value_raw: 0,
             output_value: 0,
-            pid: PIDController::new(200, 0, 0), // PID
+            pid: PIDController::new(1000, 0, 0), // PID
 
             current_buffer: [0; CURRENT_BUFFER_SIZE],
             buffer_index: 0,
         };
-        s.pid
-            .set_limits(-230 * PID_SCALING_FACTOR, 230 * PID_SCALING_FACTOR);
+        s.pid.set_limits(-230_000, 230_000);
         s
     }
 
@@ -88,7 +87,22 @@ impl<T: CurrentOutput> CurrentControl<T> {
         self.adc_value = adc_value;
         self.voltage = adc_voltage;
 
-        let current = if self.voltage > 0 {
+        let current = self.calc_current(adc_value, adc_voltage);
+        self.average_current(current);
+
+        // static mut DELAY_LOOP: u32 = 0;
+        // unsafe {
+        //     DELAY_LOOP += 1;
+        //     if DELAY_LOOP >= 1_000 {
+        //         DELAY_LOOP = 0;
+        //         self.calc_output(dt / PID_DT_SCALE_FACTOR);
+        //     }
+        // };
+        self.calc_output(dt / PID_DT_SCALE_FACTOR);
+    }
+
+    fn calc_current(&mut self, adc_value: u32, adc_voltage: i32) -> i32 {
+        if self.voltage > 0 {
             let current_raw = (self.voltage * 1000) / self.shunt_resistance as i32; // uV / mOhm = mA
             if self.output_value > 0 {
                 current_raw
@@ -97,27 +111,24 @@ impl<T: CurrentOutput> CurrentControl<T> {
             }
         } else {
             0
-        };
-
-        self.average_current(current, dt / PID_DT_SCALE_FACTOR);
-        //self.calc_output(dt);
+        }
     }
 
-    fn average_current(&mut self, current: i32, dt: u32) {
+    fn average_current(&mut self, current: i32) {
         self.current_buffer[self.buffer_index] = current;
         if self.buffer_index < (CURRENT_BUFFER_SIZE - 1) {
             self.buffer_index += 1;
         } else {
             self.buffer_index = 0;
-            self.calc_output(dt);
         }
         self.current = self.current_buffer.iter().sum::<i32>() / CURRENT_BUFFER_SIZE as i32;
     }
 
     fn calc_output(&mut self, dt: u32) {
-        self.output_value += self.pid.update(self.current as i32, dt as i32) / PID_SCALING_FACTOR;
+        self.output_value = self.pid.update(self.current as i32, dt as i32) / PID_SCALING_FACTOR;
         self.output_value = util::clamp(-230, 230, self.output_value);
-        self.output.set_output_value(self.output_value);
+        //self.output.set_output_value(self.output_value);
+        self.output.set_output_value(220);
     }
 }
 
