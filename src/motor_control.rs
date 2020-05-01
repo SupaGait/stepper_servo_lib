@@ -8,29 +8,31 @@ pub trait PositionControlled {
     fn get_angle(&self) -> i32;
 }
 
-pub struct MotorControl<T> {
-    current_control: T,
+pub struct MotorControl<T1, T2> {
+    current_control_coil_a: T1,
+    current_control_coil_b: T2,
     angle_setpoint: i32,
 }
 
-impl<T: CurrentDevice> MotorControl<T> {
-    pub fn new(motor: T) -> Self {
+impl<T1: CurrentDevice, T2: CurrentDevice> MotorControl<T1, T2> {
+    pub fn new(coil_a: T1, coil_b: T2) -> Self {
         Self {
-            current_control: motor,
+            current_control_coil_a: coil_a,
+            current_control_coil_b: coil_b,
             angle_setpoint: 0,
         }
     }
-    pub fn get_current_control(&mut self) -> &mut T {
-        &mut self.current_control
+    pub fn get_current_control(&mut self) -> &mut T1 {
+        &mut self.current_control_coil_a
     }
 }
 
-impl<T: CurrentDevice> PositionControlled for MotorControl<T> {
+impl<T1: CurrentDevice, T2: CurrentDevice> PositionControlled for MotorControl<T1, T2> {
     fn set_angle(&mut self, degrees: i32) {
         self.angle_setpoint = degrees % 360;
         // For test, bias on 180
         let current = (self.angle_setpoint - 180) / 2; // -90ma to + 90ma
-        self.current_control.set_current(current);
+        self.current_control_coil_a.set_current(current);
     }
     fn get_angle(&self) -> i32 {
         self.angle_setpoint

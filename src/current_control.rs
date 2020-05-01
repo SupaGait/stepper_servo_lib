@@ -87,7 +87,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
         self.adc_value = adc_value;
         self.voltage = adc_voltage;
 
-        let current = self.calc_current(adc_value, adc_voltage);
+        let current = self.calc_current();
         self.average_current(current);
 
         // static mut DELAY_LOOP: u32 = 0;
@@ -101,7 +101,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
         self.calc_output(dt / PID_DT_SCALE_FACTOR);
     }
 
-    fn calc_current(&mut self, adc_value: u32, adc_voltage: i32) -> i32 {
+    fn calc_current(&mut self) -> i32 {
         if self.voltage > 0 {
             let current_raw = (self.voltage * 1000) / self.shunt_resistance as i32; // uV / mOhm = mA
             if self.output_value > 0 {
@@ -128,7 +128,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
         self.output_value = self.pid.update(self.current as i32, dt as i32) / PID_SCALING_FACTOR;
         self.output_value = util::clamp(-230, 230, self.output_value);
         //self.output.set_output_value(self.output_value);
-        self.output.set_output_value(220);
+        self.output.set_output_value(200);
     }
 }
 
