@@ -59,8 +59,7 @@ impl Buffer {
 pub enum Command {
     Enable,
     Disable,
-    Left { speed: i32 },
-    Right { speed: i32 },
+    Cur { current: i32 },
     P(i32),
     I(i32),
     D(i32),
@@ -74,11 +73,8 @@ impl Command {
         match command.next() {
             Some("enable") => Some(Command::Enable),
             Some("disable") => Some(Command::Disable),
-            Some("left") => Some(Command::Left {
-                speed: Command::with_value(command)?,
-            }),
-            Some("right") => Some(Command::Right {
-                speed: Command::with_value(command)?,
+            Some("cur") => Some(Command::Cur {
+                current: Command::with_value(command)?,
             }),
             Some("p") => Some(Command::P(Command::with_value(command)?)),
             Some("i") => Some(Command::I(Command::with_value(command)?)),
@@ -173,13 +169,13 @@ mod tests {
 
     #[test]
     fn command_parsing() {
-        let data = "left 100".split_whitespace();
+        let data = "cur 100".split_whitespace();
         let command = Command::parse_from(data);
-        assert_eq!(Some(Command::Left { speed: 100 }), command);
+        assert_eq!(Some(Command::Cur { current: 100 }), command);
 
-        let data = "right -5".split_whitespace();
+        let data = "cur -5".split_whitespace();
         let command = Command::parse_from(data);
-        assert_eq!(Some(Command::Right { speed: -5 }), command);
+        assert_eq!(Some(Command::Cur { current: -5 }), command);
     }
 
     #[test]
@@ -187,22 +183,22 @@ mod tests {
         // Register for the expected command
         let mut serial_commands = SerialCommands::default();
 
-        for data in b"stop\r" {
+        for data in b"disable\r" {
             serial_commands.add_character(*data);
         }
 
-        assert_eq!(Some(Command::Stop), serial_commands.get_command());
+        assert_eq!(Some(Command::Disable), serial_commands.get_command());
         assert_eq!(None, serial_commands.get_command());
     }
 
     #[test]
     fn parse_command_leading_chars() {
         let mut serial_commands = SerialCommands::default();
-        for data in b"le _ 1 stop\r" {
+        for data in b"le _ 1 disable\r" {
             serial_commands.add_character(*data);
         }
 
-        assert_eq!(Some(Command::Stop), serial_commands.get_command());
+        assert_eq!(Some(Command::Disable), serial_commands.get_command());
         assert_eq!(None, serial_commands.get_command());
     }
 
@@ -211,12 +207,12 @@ mod tests {
         // Register for the expected command
         let mut serial_commands = SerialCommands::default();
 
-        for data in b"left 100\r" {
+        for data in b"cur 100\r" {
             serial_commands.add_character(*data);
         }
 
         assert_eq!(
-            Some(Command::Left { speed: 100 }),
+            Some(Command::Cur { current: 100 }),
             serial_commands.get_command()
         );
     }

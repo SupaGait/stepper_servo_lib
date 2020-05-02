@@ -22,8 +22,11 @@ impl<T1: CurrentDevice, T2: CurrentDevice> MotorControl<T1, T2> {
             angle_setpoint: 0,
         }
     }
-    pub fn get_current_control(&mut self) -> &mut T1 {
+    pub fn get_current_control_coil_a(&mut self) -> &mut T1 {
         &mut self.current_control_coil_a
+    }
+    pub fn get_current_control_coil_b(&mut self) -> &mut T2 {
+        &mut self.current_control_coil_b
     }
 }
 
@@ -62,7 +65,8 @@ mod tests {
 
     #[test]
     fn motor_pos_test() {
-        let mut motor_control = MotorControl::new(MockMotor { current: 0 });
+        let mut motor_control =
+            MotorControl::new(MockMotor { current: 0 }, MockMotor { current: 0 });
 
         // Test the test
         motor_control.set_angle(0);

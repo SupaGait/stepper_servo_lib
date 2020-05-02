@@ -10,6 +10,7 @@ pub trait CurrentOutput {
 const CURRENT_BUFFER_SIZE: usize = 3;
 const PID_SCALING_FACTOR: i32 = 1000;
 const PID_DT_SCALE_FACTOR: u32 = 100;
+const MAX_DUTY_CYCLE: i32 = 250;
 
 /// For now hard bound to ADC1
 pub struct CurrentControl<T: CurrentOutput> {
@@ -37,12 +38,15 @@ impl<T: CurrentOutput> CurrentControl<T> {
             output,
             //output_value_raw: 0,
             output_value: 0,
-            pid: PIDController::new(1000, 0, 0), // PID
+            pid: PIDController::new(100, 1, 0), // PID
 
             current_buffer: [0; CURRENT_BUFFER_SIZE],
             buffer_index: 0,
         };
-        s.pid.set_limits(-230_000, 230_000);
+        s.pid.set_limits(
+            -MAX_DUTY_CYCLE * PID_SCALING_FACTOR,
+            MAX_DUTY_CYCLE * PID_SCALING_FACTOR,
+        );
         s
     }
 
@@ -79,6 +83,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
             for data in self.current_buffer.iter_mut() {
                 *data = 0;
             }
+            self.pid.reset();
         }
         self.output.enable(enable);
     }
@@ -126,9 +131,8 @@ impl<T: CurrentOutput> CurrentControl<T> {
 
     fn calc_output(&mut self, dt: u32) {
         self.output_value = self.pid.update(self.current as i32, dt as i32) / PID_SCALING_FACTOR;
-        self.output_value = util::clamp(-230, 230, self.output_value);
-        //self.output.set_output_value(self.output_value);
-        self.output.set_output_value(200);
+        self.output_value = util::clamp(-MAX_DUTY_CYCLE, MAX_DUTY_CYCLE, self.output_value);
+        self.output.set_output_value(self.output_value);
     }
 }
 
