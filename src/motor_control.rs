@@ -13,6 +13,7 @@ where T1: CurrentDevice,
     coil_a: Coil<T1>,
     coil_b: Coil<T2>,
     angle: i32,
+    current: i32,
 }
 
 impl<T1, T2> MotorControl<T1, T2> 
@@ -24,6 +25,7 @@ where T1: CurrentDevice,
             coil_a: Coil::<T1>::new(output_coil_a),
             coil_b: Coil::<T2>::new(output_coil_b),
             angle: 0,
+            current: 100,
         }
     }
     pub fn update(&mut self) {
@@ -43,8 +45,8 @@ where T1: CurrentDevice,
 {
     fn set_angle(&mut self, degrees: i32) {
         self.angle = degrees;
-        self.coil_a.set_angle(degrees);
-        self.coil_b.set_angle(degrees + 90);
+        self.coil_a.set_angle(degrees, self.current);
+        self.coil_b.set_angle(degrees + 90, self.current);
     }
     fn get_angle(&self) -> i32 {
         self.angle
