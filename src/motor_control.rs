@@ -1,81 +1,63 @@
-pub trait CurrentDevice {
-    fn set_current(&mut self, milli_amps: i32);
-    fn current(&self) -> i32;
-}
+use crate::coil::Coil;
+use crate::current_control::CurrentDevice;
 
 pub trait PositionControlled {
     fn set_angle(&mut self, degrees: i32);
     fn get_angle(&self) -> i32;
 }
 
-pub struct MotorControl<T1, T2> {
-    current_control_coil_a: T1,
-    current_control_coil_b: T2,
-    angle_setpoint: i32,
+pub struct MotorControl<T1, T2>
+where T1: CurrentDevice,
+      T2: CurrentDevice,
+{
+    coil_a: Coil<T1>,
+    coil_b: Coil<T2>,
+    angle: i32,
 }
 
-impl<T1: CurrentDevice, T2: CurrentDevice> MotorControl<T1, T2> {
-    pub fn new(coil_a: T1, coil_b: T2) -> Self {
+impl<T1, T2> MotorControl<T1, T2> 
+where T1: CurrentDevice,
+      T2: CurrentDevice,
+{
+    pub fn new(output_coil_a: T1, output_coil_b: T2) -> Self {
         Self {
-            current_control_coil_a: coil_a,
-            current_control_coil_b: coil_b,
-            angle_setpoint: 0,
+            coil_a: Coil::<T1>::new(output_coil_a),
+            coil_b: Coil::<T2>::new(output_coil_b),
+            angle: 0,
         }
     }
-    pub fn get_current_control_coil_a(&mut self) -> &mut T1 {
-        &mut self.current_control_coil_a
+    pub fn update(&mut self) {
+        todo!()
     }
-    pub fn get_current_control_coil_b(&mut self) -> &mut T2 {
-        &mut self.current_control_coil_b
+    pub fn coil_a(&mut self) -> &mut Coil<T1> {
+        &mut self.coil_a
+    }
+    pub fn coil_b(&mut self) -> &mut Coil<T2> {
+        &mut self.coil_b
     }
 }
 
-impl<T1: CurrentDevice, T2: CurrentDevice> PositionControlled for MotorControl<T1, T2> {
+impl<T1, T2> PositionControlled for MotorControl<T1, T2>
+where T1: CurrentDevice,
+      T2: CurrentDevice,
+{
     fn set_angle(&mut self, degrees: i32) {
-        self.angle_setpoint = degrees % 360;
-        // For test, bias on 180
-        let current = (self.angle_setpoint - 180) / 2; // -90ma to + 90ma
-        self.current_control_coil_a.set_current(current);
+        self.angle = degrees;
+        self.coil_a.set_angle(degrees);
+        self.coil_b.set_angle(degrees + 90);
     }
     fn get_angle(&self) -> i32 {
-        self.angle_setpoint
+        self.angle
     }
 }
+
 
 //
 // Tests
 //
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    struct MockMotor {
-        pub current: i32,
-    }
-
-    impl CurrentDevice for MockMotor {
-        fn set_current(&mut self, milli_amps: i32) {
-            self.current = milli_amps;
-        }
-        fn current(&self) -> i32 {
-            self.current
-        }
-    }
-
-    #[test]
-    fn motor_pos_test() {
-        let mut motor_control =
-            MotorControl::new(MockMotor { current: 0 }, MockMotor { current: 0 });
-
-        // Test the test
-        motor_control.set_angle(0);
-        assert_eq!(-180 / 2, motor_control.get_current_control().current());
-
-        motor_control.set_angle(180);
-        assert_eq!(0, motor_control.get_current_control().current());
-
-        motor_control.set_angle(360);
-        assert_eq!(-180 / 2, motor_control.get_current_control().current());
-    }
-}
+// }

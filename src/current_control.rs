@@ -1,10 +1,14 @@
-use crate::motor_control::CurrentDevice;
 use crate::pid::{Controller, PIDController};
 use crate::util;
 
 pub trait CurrentOutput {
     fn set_output_value(&mut self, value: i32);
     fn enable(&mut self, enable: bool);
+}
+
+pub trait CurrentDevice {
+    fn set_current(&mut self, milli_amps: i32);
+    fn current(&self) -> i32;
 }
 
 const CURRENT_BUFFER_SIZE: usize = 3;
