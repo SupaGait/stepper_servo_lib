@@ -51,19 +51,19 @@ mod tests {
         }
     }
 
-    #[test]
-    fn motor_pos_test() {
-        let mut coil =
-        Coil::new(MockCurrentOutput { current: 0 });
+    // #[test]
+    // fn motor_pos_test() {
+    //     let mut coil =
+    //     Coil::new(MockCurrentOutput { current: 0 });
 
-        // Test the test
-        coil.set_angle(0, 10);
-        assert_eq!(-180 / 2, coil.current_control().current());
+    //     // Test the test
+    //     coil.set_angle(0, 10);
+    //     assert_eq!(-180 / 2, coil.current_control().current());
 
-        coil.set_angle(180, 10);
-        assert_eq!(0, coil.current_control().current());
+    //     coil.set_angle(180, 10);
+    //     assert_eq!(0, coil.current_control().current());
 
-        coil.set_angle(360, 10);
-        assert_eq!(-180 / 2, coil.current_control().current());
-    }
+    //     coil.set_angle(360, 10);
+    //     assert_eq!(-180 / 2, coil.current_control().current());
+    // }
 }
