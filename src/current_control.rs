@@ -160,7 +160,7 @@ impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    //use super::*;
 
     #[test]
     fn motor_pos_test() {

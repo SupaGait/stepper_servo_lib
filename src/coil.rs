@@ -16,7 +16,7 @@ impl<T: CurrentDevice> Coil<T> {
         }
     }
     pub fn set_angle(&mut self, degrees: i32, current: i32) {
-        self.angle_setpoint = degrees % 360;
+        self.angle_setpoint = degrees;
         self.current_setpoint = current;
         let current = lookup::get_sine(self.angle_setpoint as u32, self.current_setpoint);
         self.current_output.set_current(current);
