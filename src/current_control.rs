@@ -102,7 +102,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
         // static mut DELAY_LOOP: u32 = 0;
         // unsafe {
         //     DELAY_LOOP += 1;
-        //     if DELAY_LOOP >= 1_000 {
+        //     if DELAY_LOOP >= 10 {
         //         DELAY_LOOP = 0;
         //         self.calc_output(dt / PID_DT_SCALE_FACTOR);
         //     }
