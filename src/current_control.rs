@@ -9,6 +9,13 @@ pub trait CurrentOutput {
 pub trait CurrentDevice {
     fn set_current(&mut self, milli_amps: i32);
     fn current(&self) -> i32;
+    fn enable(&mut self, enable: bool);
+}
+
+pub trait PIDControl {
+    fn set_controller_p(&mut self, value: i32);
+    fn set_controller_i(&mut self, value: i32);
+    fn set_controller_d(&mut self, value: i32);
 }
 
 const CURRENT_BUFFER_SIZE: usize = 3;
@@ -24,7 +31,6 @@ pub struct CurrentControl<T: CurrentOutput> {
     voltage: i32,
     current: i32,
     output: T,
-    //output_value_raw: i32,
     output_value: i32,
     pid: PIDController<i32>,
     current_buffer: [i32; CURRENT_BUFFER_SIZE],
@@ -40,7 +46,6 @@ impl<T: CurrentOutput> CurrentControl<T> {
             voltage: 0,
             current: 0,
             output,
-            //output_value_raw: 0,
             output_value: 0,
             pid: PIDController::new(100, 1, 0), // PID
 
@@ -52,16 +57,6 @@ impl<T: CurrentOutput> CurrentControl<T> {
             MAX_DUTY_CYCLE * PID_SCALING_FACTOR,
         );
         s
-    }
-
-    pub fn set_p_value(&mut self, p_value: i32) {
-        self.pid.p_gain = p_value;
-    }
-    pub fn set_i_value(&mut self, i_value: i32) {
-        self.pid.i_gain = i_value;
-    }
-    pub fn set_d_value(&mut self, d_value: i32) {
-        self.pid.d_gain = d_value;
     }
 
     pub fn adc_value(&self) -> u32 {
@@ -151,6 +146,21 @@ impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
         } else {
             -1 * self.current as i32
         }
+    }
+    fn enable(&mut self, enable: bool) { 
+        self.output.enable(enable);
+    }
+}
+
+impl<T: CurrentOutput> PIDControl for CurrentControl<T> {
+    fn set_controller_p(&mut self, value: i32) {
+        self.pid.p_gain = value; 
+    }
+    fn set_controller_i(&mut self, value: i32) {
+        self.pid.i_gain = value;
+    }
+    fn set_controller_d(&mut self, value: i32) {
+        self.pid.d_gain = value;
     }
 }
 

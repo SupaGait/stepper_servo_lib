@@ -21,6 +21,9 @@ impl<T: CurrentDevice> Coil<T> {
         let current = lookup::get_sine(self.angle_setpoint as u32, self.current_setpoint);
         self.current_output.set_current(current);
     }
+    pub fn set_current(&mut self, current: i32) {
+        self.current_setpoint = current;
+    }
     pub fn get_current(&self) -> i32 {
         self.current_setpoint
     }
