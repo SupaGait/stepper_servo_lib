@@ -59,6 +59,8 @@ impl Buffer {
 pub enum Command {
     Enable,
     Disable,
+    Run{ speed:i32 },
+    Hold,
     Cur { current: i32 },
     P(i32),
     I(i32),
@@ -73,6 +75,10 @@ impl Command {
         match command.next() {
             Some("enable") => Some(Command::Enable),
             Some("disable") => Some(Command::Disable),
+            Some("run") => Some(Command::Run {
+                speed: Command::with_value(command)?
+            }),
+            Some("hold") => Some(Command::Hold),
             Some("cur") => Some(Command::Cur {
                 current: Command::with_value(command)?,
             }),

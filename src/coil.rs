@@ -52,6 +52,7 @@ mod tests {
         fn current(&self) -> i32 {
             self.current
         }
+        fn enable(&mut self, enable: bool) { todo!() }
     }
 
     // #[test]

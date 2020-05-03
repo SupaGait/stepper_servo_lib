@@ -14,6 +14,8 @@ where T1: CurrentDevice,
     coil_b: Coil<T2>,
     angle: i32,
     current: i32,
+    rotate_speed: i32,
+    hold_enabled: bool,
 }
 
 impl<T1, T2> MotorControl<T1, T2> 
@@ -26,10 +28,25 @@ where T1: CurrentDevice + PIDControl,
             coil_b: Coil::<T2>::new(output_coil_b),
             angle: 0,
             current: 0,
+            rotate_speed: 10,
+            hold_enabled: false,
         }
     }
-    pub fn update(&mut self) {
-        todo!()
+    // Returns next requested schedule in uS
+    pub fn update(&mut self) -> u32 {
+        if !self.hold_enabled {
+            static mut DEGREES: i32 = 0;
+            unsafe {
+                DEGREES = if DEGREES < 360 { DEGREES + 1 } else { 0 };
+                self.set_angle(DEGREES);
+            };
+        }
+        if self.rotate_speed > 0 {
+            10000 / self.rotate_speed as u32
+        }
+        else {
+            10000
+        }
     }
     pub fn coil_a(&mut self) -> &mut Coil<T1> {
         &mut self.coil_a
@@ -43,6 +60,12 @@ where T1: CurrentDevice + PIDControl,
     }
     pub fn set_current(&mut self, current: i32) {
         self.current = current;
+    }
+    pub fn rotate(&mut self, speed: i32) {
+        self.rotate_speed = speed;
+    }
+    pub fn hold(&mut self, enable_hold: bool) {
+        self.hold_enabled = enable_hold;
     }
 }
 
