@@ -32,7 +32,6 @@ impl<T: CurrentDevice> Coil<T> {
     }
 }
 
-
 //
 // Tests
 //
@@ -52,7 +51,9 @@ mod tests {
         fn current(&self) -> i32 {
             self.current
         }
-        fn enable(&mut self, enable: bool) { todo!() }
+        fn enable(&mut self, _enable: bool) {
+            todo!()
+        }
     }
 
     // #[test]

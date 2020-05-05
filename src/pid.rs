@@ -180,7 +180,7 @@ where
         let i_term = self.err_sum;
 
         // DIFFERENTIAL
-        let d_term =
+        let d_term = if self.d_gain != T::zero() && delta_t != T::zero() {
             if let (Some(prev_value), Some(prev_error)) = (self.prev_value, self.prev_error) {
                 match self.d_mode {
                     DerivativeMode::OnMeasurement => {
@@ -192,7 +192,10 @@ where
                 }
             } else {
                 T::zero()
-            };
+            }
+        } else {
+            T::zero()
+        };
 
         // store previous values
         self.prev_value = Some(value);

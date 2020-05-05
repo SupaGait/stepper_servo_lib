@@ -7,8 +7,9 @@ pub trait PositionControlled {
 }
 
 pub struct MotorControl<T1, T2>
-where T1: CurrentDevice,
-      T2: CurrentDevice,
+where
+    T1: CurrentDevice,
+    T2: CurrentDevice,
 {
     coil_a: Coil<T1>,
     coil_b: Coil<T2>,
@@ -18,9 +19,10 @@ where T1: CurrentDevice,
     hold_enabled: bool,
 }
 
-impl<T1, T2> MotorControl<T1, T2> 
-where T1: CurrentDevice + PIDControl,
-      T2: CurrentDevice + PIDControl,
+impl<T1, T2> MotorControl<T1, T2>
+where
+    T1: CurrentDevice + PIDControl,
+    T2: CurrentDevice + PIDControl,
 {
     pub fn new(output_coil_a: T1, output_coil_b: T2) -> Self {
         Self {
@@ -40,11 +42,15 @@ where T1: CurrentDevice + PIDControl,
                 DEGREES = if DEGREES < 360 { DEGREES + 1 } else { 0 };
                 self.set_angle(DEGREES);
             };
+        } else {
+            self.coil_a.current_control().set_current(self.current);
+            self.coil_b.current_control().set_current(self.current);
         }
+
+        // Request next update in..
         if self.rotate_speed > 0 {
             10000 / self.rotate_speed as u32
-        }
-        else {
+        } else {
             10000
         }
     }
@@ -70,8 +76,9 @@ where T1: CurrentDevice + PIDControl,
 }
 
 impl<T1, T2> PositionControlled for MotorControl<T1, T2>
-where T1: CurrentDevice,
-      T2: CurrentDevice,
+where
+    T1: CurrentDevice,
+    T2: CurrentDevice,
 {
     fn set_angle(&mut self, degrees: i32) {
         self.angle = degrees;
@@ -83,9 +90,10 @@ where T1: CurrentDevice,
     }
 }
 
-impl<T1,T2> PIDControl for MotorControl<T1, T2> 
-where T1: CurrentDevice + PIDControl,
-      T2: CurrentDevice + PIDControl,
+impl<T1, T2> PIDControl for MotorControl<T1, T2>
+where
+    T1: CurrentDevice + PIDControl,
+    T2: CurrentDevice + PIDControl,
 {
     fn set_controller_p(&mut self, value: i32) {
         self.coil_a.current_control().set_controller_p(value);
@@ -100,7 +108,6 @@ where T1: CurrentDevice + PIDControl,
         self.coil_b.current_control().set_controller_d(value);
     }
 }
-
 
 //
 // Tests
