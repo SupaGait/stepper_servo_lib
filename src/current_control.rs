@@ -7,6 +7,7 @@ pub trait CurrentOutput {
 }
 
 pub trait CurrentDevice {
+    fn update(&mut self, dt: u32);
     fn set_current(&mut self, milli_amps: i32);
     fn current(&self) -> i32;
     fn enable(&mut self, enable: bool);
@@ -75,22 +76,19 @@ impl<T: CurrentOutput> CurrentControl<T> {
         &mut self.output
     }
 
-    pub fn update(&mut self, dt: u32, adc_value: u32, adc_voltage: i32) {
+    pub fn add_sample(&mut self, adc_value: u32, adc_voltage: i32) {
+        // not averaged
         self.adc_value = adc_value;
         self.voltage = adc_voltage;
 
+        // Averaged current
         let current = self.calc_current();
-        self.average_current(current);
-
-        // static mut DELAY_LOOP: u32 = 0;
-        // unsafe {
-        //     DELAY_LOOP += 1;
-        //     if DELAY_LOOP >= 50 {
-        //         DELAY_LOOP = 0;
-        //         self.calc_output(dt);
-        //     }
-        // };
-        self.calc_output(dt);
+        self.current_buffer[self.buffer_index] = current;
+        if self.buffer_index < (CURRENT_BUFFER_SIZE - 1) {
+            self.buffer_index += 1;
+        } else {
+            self.buffer_index = 0;
+        }
     }
 
     fn calc_current(&mut self) -> i32 {
@@ -106,13 +104,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
         }
     }
 
-    fn average_current(&mut self, current: i32) {
-        self.current_buffer[self.buffer_index] = current;
-        if self.buffer_index < (CURRENT_BUFFER_SIZE - 1) {
-            self.buffer_index += 1;
-        } else {
-            self.buffer_index = 0;
-        }
+    fn average_current(&mut self) {
         self.current = self.current_buffer.iter().sum::<i32>() / CURRENT_BUFFER_SIZE as i32;
     }
 
@@ -128,6 +120,18 @@ impl<T: CurrentOutput> CurrentControl<T> {
 }
 
 impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
+    fn update(&mut self, dt: u32) {
+        // static mut DELAY_LOOP: u32 = 0;
+        // unsafe {
+        //     DELAY_LOOP += 1;
+        //     if DELAY_LOOP >= 50 {
+        //         DELAY_LOOP = 0;
+        //         self.calc_output(dt);
+        //     }
+        // };
+        self.average_current();
+        self.calc_output(dt);
+    }
     fn set_current(&mut self, milli_amps: i32) {
         self.current_setpoint = milli_amps;
         self.pid.set_target(milli_amps * PID_SCALING_FACTOR);

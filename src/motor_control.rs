@@ -54,6 +54,10 @@ where
             10_000
         }
     }
+    pub fn update_control_loop(&mut self, dt: u32) {
+        self.coil_a.current_control().update(dt);
+        self.coil_b.current_control().update(dt);
+    }
     pub fn coil_a(&mut self) -> &mut Coil<T1> {
         &mut self.coil_a
     }
