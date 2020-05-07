@@ -49,9 +49,9 @@ where
 
         // Request next update in..
         if self.rotate_speed > 0 {
-            10000 / self.rotate_speed as u32
+            10_000 / self.rotate_speed as u32
         } else {
-            10000
+            10_000
         }
     }
     pub fn coil_a(&mut self) -> &mut Coil<T1> {

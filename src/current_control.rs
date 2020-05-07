@@ -19,9 +19,9 @@ pub trait PIDControl {
 }
 
 const CURRENT_BUFFER_SIZE: usize = 3;
-const PID_SCALING_FACTOR: i32 = 10_000;
+const PID_SCALING_FACTOR: i32 = 100_000;
 const PID_DT_SCALE_FACTOR: u32 = 1000;
-const MAX_DUTY_CYCLE: i32 = 250;
+const MAX_DUTY_CYCLE: i32 = 2500;
 
 /// For now hard bound to ADC1
 pub struct CurrentControl<T: CurrentOutput> {
@@ -85,9 +85,9 @@ impl<T: CurrentOutput> CurrentControl<T> {
         // static mut DELAY_LOOP: u32 = 0;
         // unsafe {
         //     DELAY_LOOP += 1;
-        //     if DELAY_LOOP >= 10 {
+        //     if DELAY_LOOP >= 50 {
         //         DELAY_LOOP = 0;
-        //         self.calc_output(dt / PID_DT_SCALE_FACTOR);
+        //         self.calc_output(dt);
         //     }
         // };
         self.calc_output(dt);

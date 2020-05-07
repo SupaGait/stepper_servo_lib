@@ -59,7 +59,7 @@ impl Buffer {
 pub enum Command {
     Enable,
     Disable,
-    Run{ speed:i32 },
+    Run { speed: i32 },
     Hold,
     Cur { current: i32 },
     P(i32),
@@ -73,18 +73,18 @@ impl Command {
         I: Iterator<Item = &'a str>,
     {
         match command.next() {
-            Some("enable") => Some(Command::Enable),
-            Some("disable") => Some(Command::Disable),
-            Some("run") => Some(Command::Run {
-                speed: Command::with_value(command)?
+            Some("e") => Some(Command::Enable),
+            Some("d") => Some(Command::Disable),
+            Some("r") => Some(Command::Run {
+                speed: Command::with_value(command)?,
             }),
-            Some("hold") => Some(Command::Hold),
-            Some("cur") => Some(Command::Cur {
+            Some("h") => Some(Command::Hold),
+            Some("c") => Some(Command::Cur {
                 current: Command::with_value(command)?,
             }),
-            Some("p") => Some(Command::P(Command::with_value(command)?)),
-            Some("i") => Some(Command::I(Command::with_value(command)?)),
-            Some("d") => Some(Command::D(Command::with_value(command)?)),
+            Some("mp") => Some(Command::P(Command::with_value(command)?)),
+            Some("mi") => Some(Command::I(Command::with_value(command)?)),
+            Some("md") => Some(Command::D(Command::with_value(command)?)),
             _ => None,
         }
     }
