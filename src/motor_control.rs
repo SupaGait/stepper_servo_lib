@@ -39,7 +39,12 @@ where
         if !self.hold_enabled {
             static mut DEGREES: i32 = 0;
             unsafe {
-                DEGREES = if DEGREES < 360 { DEGREES + 1 } else { 0 };
+                if self.rotate_speed >= 0 {
+                    DEGREES = if DEGREES < 360 { DEGREES + 1 } else { 0 };
+                } else {
+                    DEGREES = if DEGREES > 0 { DEGREES - 1 } else { 360 };
+                }
+
                 self.set_angle(DEGREES);
             };
         } else {
@@ -48,10 +53,16 @@ where
         }
 
         // Request next update in..
-        if self.rotate_speed > 0 {
-            10_000 / self.rotate_speed as u32
+        let rotate_speed = if self.rotate_speed >= 0 {
+            self.rotate_speed as u32
         } else {
-            10_000
+            (-1 * self.rotate_speed) as u32
+        };
+
+        if rotate_speed != 0 {
+            200_000 / rotate_speed
+        } else {
+            200_000
         }
     }
     pub fn update_control_loop(&mut self, dt: u32) {
@@ -73,9 +84,14 @@ where
     }
     pub fn rotate(&mut self, speed: i32) {
         self.rotate_speed = speed;
+        self.hold_enabled = false;
     }
     pub fn hold(&mut self, enable_hold: bool) {
         self.hold_enabled = enable_hold;
+    }
+    pub fn force_duty(&mut self, duty: i32) {
+        self.coil_a.current_control().force_duty(duty);
+        self.coil_b.current_control().force_duty(duty);
     }
 }
 

@@ -95,17 +95,14 @@ pub struct PIDController<T> {
 
     target: T,
 
-    // Integral range limits
     pub i_min: T,
     pub i_max: T,
 
-    // Output range limits
     pub out_min: T,
     pub out_max: T,
 
     pub d_mode: DerivativeMode,
 
-    // The PIDs internal state. All other attributes are configuration values
     err_sum: T,
     prev_value: Option<T>,
     prev_error: Option<T>,
@@ -121,7 +118,6 @@ where
             p_gain: p_gain,
             i_gain: i_gain,
             d_gain: d_gain,
-
             target: T::zero(),
 
             err_sum: T::zero(),

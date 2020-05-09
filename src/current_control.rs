@@ -11,6 +11,7 @@ pub trait CurrentDevice {
     fn set_current(&mut self, milli_amps: i32);
     fn current(&self) -> i32;
     fn enable(&mut self, enable: bool);
+    fn force_duty(&mut self, duty: i32);
 }
 
 pub trait PIDControl {
@@ -19,9 +20,9 @@ pub trait PIDControl {
     fn set_controller_d(&mut self, value: i32);
 }
 
-const CURRENT_BUFFER_SIZE: usize = 3;
+const CURRENT_BUFFER_SIZE: usize = 10;
 const PID_SCALING_FACTOR: i32 = 100_000;
-const PID_DT_SCALE_FACTOR: u32 = 1000;
+const PID_DT_SCALE_FACTOR: u32 = 1_000;
 const MAX_DUTY_CYCLE: i32 = 2500;
 
 /// For now hard bound to ADC1
@@ -36,6 +37,7 @@ pub struct CurrentControl<T: CurrentOutput> {
     pid: PIDController<i32>,
     current_buffer: [i32; CURRENT_BUFFER_SIZE],
     buffer_index: usize,
+    no_pid_control: bool,
 }
 
 impl<T: CurrentOutput> CurrentControl<T> {
@@ -52,6 +54,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
 
             current_buffer: [0; CURRENT_BUFFER_SIZE],
             buffer_index: 0,
+            no_pid_control: false,
         };
         s.pid.set_limits(
             -MAX_DUTY_CYCLE * PID_SCALING_FACTOR,
@@ -109,12 +112,14 @@ impl<T: CurrentOutput> CurrentControl<T> {
     }
 
     fn calc_output(&mut self, dt: u32) {
-        self.output_value = self.pid.update(
-            self.current * PID_SCALING_FACTOR as i32,
-            (dt / PID_DT_SCALE_FACTOR) as i32,
-        ) / PID_SCALING_FACTOR;
+        if !self.no_pid_control {
+            self.output_value = self.pid.update(
+                self.current * PID_SCALING_FACTOR as i32,
+                (dt / PID_DT_SCALE_FACTOR) as i32,
+            ) / PID_SCALING_FACTOR;
 
-        self.output_value = util::clamp(-MAX_DUTY_CYCLE, MAX_DUTY_CYCLE, self.output_value);
+            self.output_value = util::clamp(-MAX_DUTY_CYCLE, MAX_DUTY_CYCLE, self.output_value);
+        }
         self.output.set_output_value(self.output_value);
     }
 }
@@ -153,6 +158,10 @@ impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
             self.pid.reset();
         }
         self.output.enable(enable);
+    }
+    fn force_duty(&mut self, duty: i32) {
+        self.no_pid_control = true;
+        self.output_value = duty;
     }
 }
 

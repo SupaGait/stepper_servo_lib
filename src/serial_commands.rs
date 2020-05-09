@@ -65,6 +65,7 @@ pub enum Command {
     P(i32),
     I(i32),
     D(i32),
+    ForceDuty(i32),
 }
 
 impl Command {
@@ -85,6 +86,7 @@ impl Command {
             Some("mp") => Some(Command::P(Command::with_value(command)?)),
             Some("mi") => Some(Command::I(Command::with_value(command)?)),
             Some("md") => Some(Command::D(Command::with_value(command)?)),
+            Some("duty") => Some(Command::ForceDuty(Command::with_value(command)?)),
             _ => None,
         }
     }
