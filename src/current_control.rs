@@ -20,7 +20,7 @@ pub trait PIDControl {
     fn set_controller_d(&mut self, value: i32);
 }
 
-const ADC_BUFFER_SIZE: usize = 5;
+const ADC_BUFFER_SIZE: usize = 3;
 const PID_SCALING_FACTOR: i32 = 100_000;
 const PID_DT_SCALE_FACTOR: u32 = 1000;
 const MAX_DUTY_CYCLE: i32 = 2500;
