@@ -20,9 +20,9 @@ pub trait PIDControl {
     fn set_controller_d(&mut self, value: i32);
 }
 
-const CURRENT_BUFFER_SIZE: usize = 10;
+const ADC_BUFFER_SIZE: usize = 5;
 const PID_SCALING_FACTOR: i32 = 100_000;
-const PID_DT_SCALE_FACTOR: u32 = 1_000;
+const PID_DT_SCALE_FACTOR: u32 = 1000;
 const MAX_DUTY_CYCLE: i32 = 2500;
 
 /// For now hard bound to ADC1
@@ -35,13 +35,14 @@ pub struct CurrentControl<T: CurrentOutput> {
     output: T,
     output_value: i32,
     pid: PIDController<i32>,
-    current_buffer: [i32; CURRENT_BUFFER_SIZE],
-    buffer_index: usize,
+    adc_buffer: [u32; ADC_BUFFER_SIZE],
+    adc_buffer_index: usize,
+    adc_max_value: u32,
     no_pid_control: bool,
 }
 
 impl<T: CurrentOutput> CurrentControl<T> {
-    pub fn new(shunt_resistance: u32, output: T) -> Self {
+    pub fn new(shunt_resistance: u32, output: T, adc_max_value: u32) -> Self {
         let mut s = Self {
             shunt_resistance,
             current_setpoint: 0,
@@ -52,8 +53,9 @@ impl<T: CurrentOutput> CurrentControl<T> {
             output_value: 0,
             pid: PIDController::new(0, 0, 0), // PID
 
-            current_buffer: [0; CURRENT_BUFFER_SIZE],
-            buffer_index: 0,
+            adc_buffer: [0; ADC_BUFFER_SIZE],
+            adc_buffer_index: 0,
+            adc_max_value,
             no_pid_control: false,
         };
         s.pid.set_limits(
@@ -79,23 +81,21 @@ impl<T: CurrentOutput> CurrentControl<T> {
         &mut self.output
     }
 
-    pub fn add_sample(&mut self, adc_value: u32, adc_voltage: i32) {
-        // not averaged
-        self.adc_value = adc_value;
-        self.voltage = adc_voltage;
-
-        // Averaged current
-        let current = self.calc_current();
-        self.current_buffer[self.buffer_index] = current;
-        if self.buffer_index < (CURRENT_BUFFER_SIZE - 1) {
-            self.buffer_index += 1;
+    pub fn add_sample(&mut self, adc_value: u32) {
+        self.adc_buffer[self.adc_buffer_index] = adc_value;
+        if self.adc_buffer_index < (ADC_BUFFER_SIZE - 1) {
+            self.adc_buffer_index += 1;
         } else {
-            self.buffer_index = 0;
+            self.adc_buffer_index = 0;
         }
     }
 
-    fn calc_current(&mut self) -> i32 {
-        if self.voltage > 0 {
+    fn calc_voltage(&mut self) {
+        self.voltage = ((3300 * self.adc_value) / self.adc_max_value) as i32;
+    }
+
+    fn calc_current(&mut self) {
+        self.current = if self.voltage >= 0 {
             let current_raw = (self.voltage * 1000) / self.shunt_resistance as i32; // uV / mOhm = mA
             if self.output_value >= 0 {
                 current_raw
@@ -107,8 +107,8 @@ impl<T: CurrentOutput> CurrentControl<T> {
         }
     }
 
-    fn average_current(&mut self) {
-        self.current = self.current_buffer.iter().sum::<i32>() / CURRENT_BUFFER_SIZE as i32;
+    fn average_adc_value(&mut self) {
+        self.adc_value = self.adc_buffer.iter().sum::<u32>() / ADC_BUFFER_SIZE as u32;
     }
 
     fn calc_output(&mut self, dt: u32) {
@@ -126,15 +126,9 @@ impl<T: CurrentOutput> CurrentControl<T> {
 
 impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
     fn update(&mut self, dt: u32) {
-        // static mut DELAY_LOOP: u32 = 0;
-        // unsafe {
-        //     DELAY_LOOP += 1;
-        //     if DELAY_LOOP >= 50 {
-        //         DELAY_LOOP = 0;
-        //         self.calc_output(dt);
-        //     }
-        // };
-        self.average_current();
+        self.average_adc_value();
+        self.calc_voltage();
+        self.calc_current();
         self.calc_output(dt);
     }
     fn set_current(&mut self, milli_amps: i32) {
@@ -142,7 +136,7 @@ impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
         self.pid.set_target(milli_amps * PID_SCALING_FACTOR);
     }
     fn current(&self) -> i32 {
-        if self.output_value > 0 {
+        if self.output_value >= 0 {
             self.current as i32
         } else {
             -1 * self.current as i32
@@ -152,16 +146,18 @@ impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
         if enable {
             //reset
             self.output_value = 0;
-            for data in self.current_buffer.iter_mut() {
+            for data in self.adc_buffer.iter_mut() {
                 *data = 0;
             }
             self.pid.reset();
+            self.no_pid_control = false;
         }
         self.output.enable(enable);
     }
     fn force_duty(&mut self, duty: i32) {
         self.no_pid_control = true;
         self.output_value = duty;
+        self.output.enable(true);
     }
 }
 
