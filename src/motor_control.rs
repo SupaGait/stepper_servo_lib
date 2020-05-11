@@ -13,7 +13,8 @@ where
 {
     coil_a: Coil<T1>,
     coil_b: Coil<T2>,
-    angle: i32,
+    angle_setpoint: i32,
+    position_setpoint: i32,
     current: i32,
     rotate_speed: i32,
     hold_enabled: bool,
@@ -28,7 +29,8 @@ where
         Self {
             coil_a: Coil::<T1>::new(output_coil_a),
             coil_b: Coil::<T2>::new(output_coil_b),
-            angle: 0,
+            angle_setpoint: 0,
+            position_setpoint: 0,
             current: 0,
             rotate_speed: 10,
             hold_enabled: false,
@@ -82,6 +84,9 @@ where
     pub fn set_current(&mut self, current: i32) {
         self.current = current;
     }
+    pub fn set_position(&mut self, position: i32) {
+        self.position_setpoint = position;
+    }
     pub fn rotate(&mut self, speed: i32) {
         self.rotate_speed = speed;
         self.hold_enabled = false;
@@ -101,12 +106,12 @@ where
     T2: CurrentDevice,
 {
     fn set_angle(&mut self, degrees: i32) {
-        self.angle = degrees;
+        self.angle_setpoint = degrees;
         self.coil_a.set_angle(degrees, self.current);
         self.coil_b.set_angle(degrees + 90, self.current);
     }
     fn get_angle(&self) -> i32 {
-        self.angle
+        self.angle_setpoint
     }
 }
 

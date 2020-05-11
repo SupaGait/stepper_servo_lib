@@ -62,6 +62,7 @@ pub enum Command {
     Run { speed: i32 },
     Hold,
     Cur { current: i32 },
+    Position(i32),
     P(i32),
     I(i32),
     D(i32),
@@ -83,6 +84,7 @@ impl Command {
             Some("c") => Some(Command::Cur {
                 current: Command::with_value(command)?,
             }),
+            Some("p") => Some(Command::Position(Command::with_value(command)?)),
             Some("mp") => Some(Command::P(Command::with_value(command)?)),
             Some("mi") => Some(Command::I(Command::with_value(command)?)),
             Some("md") => Some(Command::D(Command::with_value(command)?)),
