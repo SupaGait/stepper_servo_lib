@@ -51,7 +51,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
             current: 0,
             output,
             output_value: 0,
-            pid: PIDController::new(0, 0, 0), // PID
+            pid: PIDController::new(0, 0, 0),
 
             adc_buffer: [0; ADC_BUFFER_SIZE],
             adc_buffer_index: 0,
