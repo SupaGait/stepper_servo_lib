@@ -111,7 +111,7 @@ impl<T: CurrentOutput> CurrentControl<T> {
         self.adc_value = self.adc_buffer.iter().sum::<u32>() / ADC_BUFFER_SIZE as u32;
     }
 
-    fn calc_output(&mut self, dt: u32) {
+    fn calc_output(&mut self, _dt: u32) {
         if !self.no_pid_control {
             self.output_value = self.pid.update(
                 self.current * PID_SCALING_FACTOR as i32,

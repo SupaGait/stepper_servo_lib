@@ -1,14 +1,11 @@
 use crate::coil::Coil;
 use crate::current_control::{CurrentDevice, PIDControl};
+use crate::position_control::{PositionControl, PositionInput};
 //use crate::pid::{Controller, PIDController};
 
 pub trait PositionControlled {
     fn set_angle(&mut self, degrees: i32);
     fn get_angle(&self) -> i32;
-}
-
-pub trait PositionInput {
-    fn get_position(&self) -> i32;
 }
 
 pub struct MotorControl<T1, T2, Inp>
@@ -18,9 +15,8 @@ where
 {
     coil_a: Coil<T1>,
     coil_b: Coil<T2>,
-    position_input: Inp,
+    position_control: PositionControl<Inp>,
     angle_setpoint: i32,
-    position_setpoint: i32,
     speed: u32,
     current: i32,
     rotate_speed: i32,
@@ -35,10 +31,6 @@ enum ControlType {
     Hold,
 }
 
-const DWT_FREQ: u32 = 72_000_000;
-const POS_CONTROLLER_PERIOD: u32 = DWT_FREQ / 5000;
-const DEGREES_PER_ENCODER_PULSE: i32 = 36;
-
 impl<T1, T2, Inp> MotorControl<T1, T2, Inp>
 where
     T1: CurrentDevice + PIDControl,
@@ -49,9 +41,8 @@ where
         Self {
             coil_a: Coil::<T1>::new(output_coil_a),
             coil_b: Coil::<T2>::new(output_coil_b),
-            position_input,
+            position_control: PositionControl::<Inp>::new(position_input),
             angle_setpoint: 0,
-            position_setpoint: 0,
             speed: 0,
             current: 0,
             rotate_speed: 10,
@@ -94,21 +85,9 @@ where
                 200_000
             }
             ControlType::Position => {
-                let position_diff = self.position_setpoint - self.position_input.get_position();
-                let delta_cycles = DWT_FREQ / self.speed;
-
-                self.cycles_in_step = if self.cycles_in_step > DWT_FREQ / 360 {
-                    if position_diff > 0 {
-                        self.set_angle(self.get_angle() + DEGREES_PER_ENCODER_PULSE);
-                    }
-                    if position_diff < 0 {
-                        self.set_angle(self.get_angle() - DEGREES_PER_ENCODER_PULSE);
-                    }
-                    0
-                } else {
-                    self.cycles_in_step + delta_cycles
-                };
-                delta_cycles
+                let angle = self.position_control.angle();
+                self.set_angle(angle);
+                self.position_control.update()
             }
         }
     }
@@ -130,14 +109,15 @@ where
         self.current = current;
     }
     pub fn set_position(&mut self, position: i32) {
-        self.position_setpoint = position;
+        self.position_control.set_position(position);
         self.control_type = ControlType::Position;
     }
     pub fn set_speed(&mut self, speed: i32) {
-        self.speed = speed as u32;
+        self.position_control.set_speed(speed);
+        self.control_type = ControlType::Position;
     }
-    pub fn position_input(&mut self) -> &mut Inp {
-        &mut self.position_input
+    pub fn position_control(&mut self) -> &mut PositionControl<Inp> {
+        &mut self.position_control
     }
     pub fn rotate(&mut self, speed: i32) {
         self.rotate_speed = speed;
