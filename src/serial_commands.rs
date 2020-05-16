@@ -62,7 +62,7 @@ pub enum Command {
     Rotate { speed: i32 },
     Hold,
     Cur { current: i32 },
-    Position(i32),
+    Position { position: i32, speed: i32 },
     P(i32),
     I(i32),
     D(i32),
@@ -78,22 +78,25 @@ impl Command {
             Some("e") => Some(Command::Enable),
             Some("d") => Some(Command::Disable),
             Some("r") => Some(Command::Rotate {
-                speed: Command::with_value(command)?,
+                speed: Command::with_value(&mut command)?,
             }),
             Some("h") => Some(Command::Hold),
             Some("c") => Some(Command::Cur {
-                current: Command::with_value(command)?,
+                current: Command::with_value(&mut command)?,
             }),
-            Some("p") => Some(Command::Position(Command::with_value(command)?)),
-            Some("mp") => Some(Command::P(Command::with_value(command)?)),
-            Some("mi") => Some(Command::I(Command::with_value(command)?)),
-            Some("md") => Some(Command::D(Command::with_value(command)?)),
-            Some("duty") => Some(Command::ForceDuty(Command::with_value(command)?)),
+            Some("p") => Some(Command::Position {
+                position: Command::with_value(&mut command)?,
+                speed: Command::with_value(&mut command)?,
+            }),
+            Some("mp") => Some(Command::P(Command::with_value(&mut command)?)),
+            Some("mi") => Some(Command::I(Command::with_value(&mut command)?)),
+            Some("md") => Some(Command::D(Command::with_value(&mut command)?)),
+            Some("duty") => Some(Command::ForceDuty(Command::with_value(&mut command)?)),
             _ => None,
         }
     }
 
-    fn with_value<'a, I>(mut command: I) -> Option<i32>
+    fn with_value<'a, I>(command: &mut I) -> Option<i32>
     where
         I: Iterator<Item = &'a str>,
     {

@@ -21,6 +21,7 @@ where
     position_input: Inp,
     angle_setpoint: i32,
     position_setpoint: i32,
+    speed: u32,
     current: i32,
     rotate_speed: i32,
     control_type: ControlType,
@@ -51,6 +52,7 @@ where
             position_input,
             angle_setpoint: 0,
             position_setpoint: 0,
+            speed: 0,
             current: 0,
             rotate_speed: 10,
             control_type: ControlType::Rotate,
@@ -93,6 +95,7 @@ where
             }
             ControlType::Position => {
                 let position_diff = self.position_setpoint - self.position_input.get_position();
+                let delta_cycles = DWT_FREQ / self.speed;
 
                 self.cycles_in_step = if self.cycles_in_step > DWT_FREQ / 360 {
                     if position_diff > 0 {
@@ -103,14 +106,9 @@ where
                     }
                     0
                 } else {
-                    self.cycles_in_step + POS_CONTROLLER_PERIOD
+                    self.cycles_in_step + delta_cycles
                 };
-
-                // let angle = self.pid.update(
-                //     self.position_input.get_position(),
-                //     POS_CONTROLLER_PERIOD as i32,
-                // );
-                POS_CONTROLLER_PERIOD
+                delta_cycles
             }
         }
     }
@@ -134,6 +132,9 @@ where
     pub fn set_position(&mut self, position: i32) {
         self.position_setpoint = position;
         self.control_type = ControlType::Position;
+    }
+    pub fn set_speed(&mut self, speed: i32) {
+        self.speed = speed as u32;
     }
     pub fn position_input(&mut self) -> &mut Inp {
         &mut self.position_input

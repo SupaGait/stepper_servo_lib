@@ -20,9 +20,9 @@ pub trait PIDControl {
     fn set_controller_d(&mut self, value: i32);
 }
 
-const ADC_BUFFER_SIZE: usize = 3;
+const ADC_BUFFER_SIZE: usize = 1;
 const PID_SCALING_FACTOR: i32 = 100_000;
-const PID_DT_SCALE_FACTOR: u32 = 1000;
+const PID_I_SCALE_FACTOR: i32 = 100;
 const MAX_DUTY_CYCLE: i32 = 2500;
 
 /// For now hard bound to ADC1
@@ -115,7 +115,8 @@ impl<T: CurrentOutput> CurrentControl<T> {
         if !self.no_pid_control {
             self.output_value = self.pid.update(
                 self.current * PID_SCALING_FACTOR as i32,
-                (dt / PID_DT_SCALE_FACTOR) as i32,
+                1 as i32,
+                PID_I_SCALE_FACTOR,
             ) / PID_SCALING_FACTOR;
 
             self.output_value = util::clamp(-MAX_DUTY_CYCLE, MAX_DUTY_CYCLE, self.output_value);

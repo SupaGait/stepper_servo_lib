@@ -31,7 +31,7 @@ pub trait Controller<T> {
     ///
     /// Records a new values. `delta_t` is the time since the last update in
     /// seconds.
-    fn update(&mut self, value: T, delta_t: T) -> T;
+    fn update(&mut self, value: T, delta_t: T, i_scale: T) -> T;
 
     /// Adjust set target for the plant.
     ///
@@ -161,7 +161,7 @@ where
         self.target
     }
 
-    fn update(&mut self, value: T, delta_t: T) -> T {
+    fn update(&mut self, value: T, delta_t: T, i_scale: T) -> T {
         let error = self.target - value;
 
         // PROPORTIONAL
@@ -171,7 +171,7 @@ where
         self.err_sum = util::clamp(
             self.i_min,
             self.i_max,
-            self.err_sum + self.i_gain * error * delta_t,
+            self.err_sum + (self.i_gain * error * delta_t) / i_scale,
         );
         let i_term = self.err_sum;
 
