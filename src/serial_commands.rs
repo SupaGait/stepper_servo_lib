@@ -62,10 +62,13 @@ pub enum Command {
     Rotate { speed: i32 },
     Hold,
     Cur { current: i32 },
-    Position { position: i32, speed: i32 },
+    Position { position: i32 },
+    Speed { speed: i32 },
+    PositionAndSpeed { position: i32, speed: i32 },
     P(i32),
     I(i32),
     D(i32),
+    Calibrate,
     ForceDuty(i32),
 }
 
@@ -86,11 +89,18 @@ impl Command {
             }),
             Some("p") => Some(Command::Position {
                 position: Command::with_value(&mut command)?,
+            }),
+            Some("s") => Some(Command::Speed {
+                speed: Command::with_value(&mut command)?,
+            }),
+            Some("ps") => Some(Command::PositionAndSpeed {
+                position: Command::with_value(&mut command)?,
                 speed: Command::with_value(&mut command)?,
             }),
             Some("mp") => Some(Command::P(Command::with_value(&mut command)?)),
             Some("mi") => Some(Command::I(Command::with_value(&mut command)?)),
             Some("md") => Some(Command::D(Command::with_value(&mut command)?)),
+            Some("cal") => Some(Command::Calibrate),
             Some("duty") => Some(Command::ForceDuty(Command::with_value(&mut command)?)),
             _ => None,
         }

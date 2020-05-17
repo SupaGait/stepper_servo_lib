@@ -3,6 +3,9 @@ use crate::current_control::{CurrentDevice, PIDControl};
 use crate::position_control::{PositionControl, PositionInput};
 //use crate::pid::{Controller, PIDController};
 
+const DWT_FREQ: i32 = 72_000_000;
+const UPDATE_PERIOD: i32 = DWT_FREQ / 20_000;
+
 pub trait PositionControlled {
     fn set_angle(&mut self, degrees: i32);
     fn get_angle(&self) -> i32;
@@ -17,11 +20,9 @@ where
     coil_b: Coil<T2>,
     position_control: PositionControl<Inp>,
     angle_setpoint: i32,
-    speed: u32,
     current: i32,
     rotate_speed: i32,
     control_type: ControlType,
-    cycles_in_step: u32,
     //pid: PIDController<i32>,
 }
 
@@ -41,13 +42,11 @@ where
         Self {
             coil_a: Coil::<T1>::new(output_coil_a),
             coil_b: Coil::<T2>::new(output_coil_b),
-            position_control: PositionControl::<Inp>::new(position_input),
+            position_control: PositionControl::<Inp>::new(position_input, UPDATE_PERIOD),
             angle_setpoint: 0,
-            speed: 0,
             current: 0,
             rotate_speed: 10,
-            control_type: ControlType::Rotate,
-            cycles_in_step: 0,
+            control_type: ControlType::Hold,
             //pid: PIDController::new(0, 0, 0),
         }
     }
@@ -85,9 +84,11 @@ where
                 200_000
             }
             ControlType::Position => {
+                self.position_control.update();
                 let angle = self.position_control.angle();
                 self.set_angle(angle);
-                self.position_control.update()
+
+                UPDATE_PERIOD as u32
             }
         }
     }
@@ -119,12 +120,19 @@ where
     pub fn position_control(&mut self) -> &mut PositionControl<Inp> {
         &mut self.position_control
     }
+    pub fn handle_new_position(&mut self) {
+        self.position_control.update_position();
+    }
     pub fn rotate(&mut self, speed: i32) {
         self.rotate_speed = speed;
         self.control_type = ControlType::Rotate;
     }
     pub fn hold(&mut self) {
         self.control_type = ControlType::Hold;
+    }
+    pub fn calibrate(&mut self) {
+        self.control_type = ControlType::Position;
+        self.position_control.start_calibration();
     }
     pub fn force_duty(&mut self, duty: i32) {
         self.coil_a.current_control().force_duty(duty);
