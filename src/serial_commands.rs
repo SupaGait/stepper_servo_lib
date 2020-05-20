@@ -69,6 +69,7 @@ pub enum Command {
     I(i32),
     D(i32),
     Calibrate,
+    ShowCalData,
     ForceDuty(i32),
 }
 
@@ -101,6 +102,7 @@ impl Command {
             Some("mi") => Some(Command::I(Command::with_value(&mut command)?)),
             Some("md") => Some(Command::D(Command::with_value(&mut command)?)),
             Some("cal") => Some(Command::Calibrate),
+            Some("cal_data") => Some(Command::ShowCalData),
             Some("duty") => Some(Command::ForceDuty(Command::with_value(&mut command)?)),
             _ => None,
         }
