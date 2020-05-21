@@ -2,6 +2,11 @@
 const PULSES_PER_ROTATION: usize = 600 * 4;
 const DEGREES_PER_ENCODER_PULSE: i32 = 36;
 
+const ROTOR_TEETH: usize = 50;
+const ROTOR_POLES: usize = 2;
+const STEPS_PER_POLE: usize = 2; // Bipolar.
+const STEPS_PER_ROTATION: usize = ROTOR_TEETH * ROTOR_POLES * STEPS_PER_POLE;
+
 #[derive(Clone, Copy)]
 pub enum Direction {
     Increased(i32),
@@ -21,12 +26,12 @@ enum Mode {
 
 pub struct Debug_calibration_data {
     pub pulse_at_angle: [i32; PULSES_PER_ROTATION],
-    pub position_at_cal_step: [[i32; 4]; 100],
+    pub position_at_cal_step: [[i32; 4]; STEPS_PER_ROTATION],
 }
 
 static mut DEBUG_CALIBRATION_DATA: Debug_calibration_data = Debug_calibration_data {
     pulse_at_angle: [0; PULSES_PER_ROTATION],
-    position_at_cal_step: [[0; 4]; 100],
+    position_at_cal_step: [[0; 4]; STEPS_PER_ROTATION],
 };
 
 //static mut PULSE_AT_ANGLE: [i32; PULSES_PER_ROTATION] = [0; PULSES_PER_ROTATION];
@@ -140,32 +145,41 @@ where
         self.angle_setpoint %= 360;
     }
 
-    fn calibrate(&mut self) {
+    pub fn calibrate(&mut self) {
         //Slowly step through the full range and save angles.
-        if self.calibration_data.slow_iteration < 5 {
+        if self.calibration_data.slow_iteration < 10 {
             self.calibration_data.slow_iteration += 1;
         } else {
             self.calibration_data.slow_iteration = 0;
+
+            // Each 180 degree is a step -> step at: 0,180
+            if self.angle_setpoint % 180 == 0 {
+                self.calibration_data.current_step += 1;
+            }
             self.angle_setpoint = if self.angle_setpoint < 359 {
                 self.angle_setpoint + 1
             } else {
-                self.calibration_data.current_step += 1;
                 0
             }
         }
         // Save angle at certain steps
         unsafe {
-            if self.calibration_data.current_step < 100 {
-                if self.angle_setpoint % 90 == 0 {
+            if self.calibration_data.current_step < STEPS_PER_ROTATION as u32 {
+                if self.angle_setpoint % 45 == 0 {
+                    let micro_step = if self.angle_setpoint < 180 {
+                        self.angle_setpoint / 45
+                    } else {
+                        (self.angle_setpoint - 180) / 45
+                    };
                     DEBUG_CALIBRATION_DATA.position_at_cal_step
-                        [self.calibration_data.current_step as usize]
-                        [(self.angle_setpoint / 90) as usize] = self.get_current_position();
+                        [self.calibration_data.current_step as usize][micro_step as usize] =
+                        self.get_current_position();
                 }
             }
         }
 
         // Are we done?
-        if self.calibration_data.current_step == 100 {
+        if self.calibration_data.current_step == STEPS_PER_ROTATION as u32 {
             self.calibration_data.calibrated = true;
             self.mode = Mode::Normal;
         }
@@ -194,5 +208,8 @@ where
     }
     pub fn get_calibration_data(&self) -> &Debug_calibration_data {
         unsafe { &DEBUG_CALIBRATION_DATA }
+    }
+    pub fn calibration_is_done(&self) -> bool {
+        self.calibration_data.calibrated
     }
 }

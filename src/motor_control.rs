@@ -30,6 +30,7 @@ enum ControlType {
     Rotate,
     Position,
     Hold,
+    Calibration,
 }
 
 impl<T1, T2, Inp> MotorControl<T1, T2, Inp>
@@ -90,6 +91,19 @@ where
 
                 UPDATE_PERIOD as u32
             }
+            ControlType::Calibration => {
+                self.position_control.calibrate();
+
+                if self.position_control.calibration_is_done() {
+                    self.enable(false);
+                    self.control_type = ControlType::Hold;
+                } else {
+                    let angle = self.position_control.angle();
+                    self.set_angle(angle);
+                }
+
+                UPDATE_PERIOD as u32
+            }
         }
     }
     pub fn update_control_loop(&mut self, dt: u32) {
@@ -131,7 +145,7 @@ where
         self.control_type = ControlType::Hold;
     }
     pub fn calibrate(&mut self) {
-        self.control_type = ControlType::Position;
+        self.control_type = ControlType::Calibration;
         self.position_control.start_calibration();
     }
     pub fn force_duty(&mut self, duty: i32) {
