@@ -30,6 +30,7 @@ pub struct CurrentControl<T: CurrentOutput> {
     shunt_resistance: u32,
     current_setpoint: i32,
     adc_value: u32,
+    adc_offset: u32,
     voltage: i32,
     current: i32,
     output: T,
@@ -42,11 +43,12 @@ pub struct CurrentControl<T: CurrentOutput> {
 }
 
 impl<T: CurrentOutput> CurrentControl<T> {
-    pub fn new(shunt_resistance: u32, output: T, adc_max_value: u32) -> Self {
+    pub fn new(shunt_resistance: u32, output: T, adc_offset: u32, adc_max_value: u32) -> Self {
         let mut s = Self {
             shunt_resistance,
             current_setpoint: 0,
             adc_value: 0,
+            adc_offset,
             voltage: 0,
             current: 0,
             output,
@@ -91,7 +93,9 @@ impl<T: CurrentOutput> CurrentControl<T> {
     }
 
     fn calc_voltage(&mut self) {
-        self.voltage = ((3300 * self.adc_value) / self.adc_max_value) as i32;
+        let adc_value = (self.adc_value as i32 - self.adc_offset as i32).max(0) as u32;
+        let scaled_voltage = ((3300 * adc_value) / self.adc_max_value) as i32;
+        self.voltage = (scaled_voltage * 10) / 68;
     }
 
     fn calc_current(&mut self) {

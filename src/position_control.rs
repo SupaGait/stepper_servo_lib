@@ -162,7 +162,7 @@ where
                 0
             }
         }
-        // Save angle at certain steps
+        // Save position at certain microsteps
         unsafe {
             if self.calibration_data.current_step < STEPS_PER_ROTATION as u32 {
                 if self.angle_setpoint % 45 == 0 {
