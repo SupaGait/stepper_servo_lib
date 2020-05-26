@@ -23,7 +23,7 @@ pub trait PIDControl {
 const ADC_BUFFER_SIZE: usize = 1;
 const PID_SCALING_FACTOR: i32 = 100_000;
 const PID_I_SCALE_FACTOR: i32 = 100;
-const MAX_DUTY_CYCLE: i32 = 2500;
+const MAX_DUTY_CYCLE: i32 = 2300; // +-500mA @ 20khz
 
 /// For now hard bound to ADC1
 pub struct CurrentControl<T: CurrentOutput> {
@@ -161,7 +161,7 @@ impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
     }
     fn force_duty(&mut self, duty: i32) {
         self.no_pid_control = true;
-        self.output_value = duty;
+        self.output_value = duty.min(MAX_DUTY_CYCLE);
         self.output.enable(true);
     }
 }
