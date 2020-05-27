@@ -1,6 +1,7 @@
 //const DEGREES_PER_ENCODER_PULSE: i32 = 36;
 const PULSES_PER_ROTATION: usize = 600 * 4;
 const DEGREES_PER_ENCODER_PULSE: i32 = 36;
+const CAL_SAMPLES_PER_STEP: usize = 4;
 
 const ROTOR_TEETH: usize = 50;
 const ROTOR_POLES: usize = 2;
@@ -31,7 +32,7 @@ pub struct Debug_calibration_data {
 
 static mut DEBUG_CALIBRATION_DATA: Debug_calibration_data = Debug_calibration_data {
     pulse_at_angle: [0; PULSES_PER_ROTATION],
-    position_at_cal_step: [[0; 4]; STEPS_PER_ROTATION],
+    position_at_cal_step: [[0; CAL_SAMPLES_PER_STEP]; STEPS_PER_ROTATION],
 };
 
 //static mut PULSE_AT_ANGLE: [i32; PULSES_PER_ROTATION] = [0; PULSES_PER_ROTATION];
@@ -152,8 +153,8 @@ where
         } else {
             self.calibration_data.slow_iteration = 0;
 
-            // Each 180 degree is a step -> step at: 0,180
-            if self.angle_setpoint % 180 == 0 {
+            // Each 90 degree is a step -> step at: 0, 90, 180, 270
+            if self.angle_setpoint % 90 == 0 {
                 self.calibration_data.current_step += 1;
             }
             self.angle_setpoint = if self.angle_setpoint < 359 {
@@ -165,12 +166,11 @@ where
         // Save position at certain microsteps
         unsafe {
             if self.calibration_data.current_step < STEPS_PER_ROTATION as u32 {
-                if self.angle_setpoint % 45 == 0 {
-                    let micro_step = if self.angle_setpoint < 180 {
-                        self.angle_setpoint / 45
-                    } else {
-                        (self.angle_setpoint - 180) / 45
-                    };
+                const MICRO_STEP_AT_ANGLE: i32 = (90 / CAL_SAMPLES_PER_STEP as i32) + 1;
+                if self.angle_setpoint % MICRO_STEP_AT_ANGLE == 0 {
+                    // Microstep at 0, 23, 46, 69
+                    let micro_step = (self.angle_setpoint % MICRO_STEP_AT_ANGLE)
+                        % (ROTOR_POLES * STEPS_PER_POLE) as i32;
                     DEBUG_CALIBRATION_DATA.position_at_cal_step
                         [self.calibration_data.current_step as usize][micro_step as usize] =
                         self.get_current_position();

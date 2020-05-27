@@ -23,6 +23,7 @@ where
     current: i32,
     rotate_speed: i32,
     control_type: ControlType,
+    enabled: bool,
     //pid: PIDController<i32>,
 }
 
@@ -48,11 +49,16 @@ where
             current: 0,
             rotate_speed: 10,
             control_type: ControlType::Hold,
+            enabled: false,
             //pid: PIDController::new(0, 0, 0),
         }
     }
     // Returns next requested schedule in cycles
     pub fn update(&mut self) -> u32 {
+        if !self.enabled {
+            return DWT_FREQ as u32 / 100;
+        }
+
         match self.control_type {
             ControlType::Rotate => {
                 static mut DEGREES: i32 = 0;
@@ -119,6 +125,7 @@ where
     pub fn enable(&mut self, enable: bool) {
         self.coil_a.current_control().enable(enable);
         self.coil_b.current_control().enable(enable);
+        self.enabled = enable;
     }
     pub fn set_current(&mut self, current: i32) {
         self.current = current;
