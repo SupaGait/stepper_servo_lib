@@ -36,8 +36,9 @@ enum CalibrationPhase {
     Step1Backwards,
     Step2Forwards,
     Step3CalibratingForward,
-    // Step4Wait,
-    // Step5CalibratingBackward,
+    Step4Wait,
+    #[cfg(cal_hyst)]
+    Step5CalibratingBackward,
 }
 struct CalibrationData {
     slow_iteration: u32,
@@ -140,10 +141,8 @@ where
         const COIL_MAX_PULL_ANGLE: i32 = 60;
         const HALF_COIL_MAX_PULL_ANGLE: i32 = COIL_MAX_PULL_ANGLE / 2;
 
-        let position_diff = self.get_current_position() - self.setpoint;
-        // @ 20kHz, 200steps
-        // 20_000 / 360 = 55.5 => / 200 = 0.3 rotation
-        // Move new angle based on speed
+        let position = self.get_current_position();
+        let position_diff = position - self.setpoint;
 
         // Prevent ossilations, reduce the pull as we are close.
         let diff = position_diff.abs();
@@ -153,22 +152,19 @@ where
             _ => COIL_MAX_PULL_ANGLE,
         };
 
-        if position_diff > 0 {
-            //self.next_angle -= 1 * self.speed
-            //self.interpolation_change -= 1;
-            self.angle_setpoint = self.detected_angle - pull_angle;
-        }
-        if position_diff < 0 {
-            //self.next_angle += 1 * self.speed
-            //self.interpolation_change += 1;
-            self.angle_setpoint = self.detected_angle + pull_angle;
-        }
+        // Change new angle acording to position
+        self.angle_setpoint = if position_diff.is_positive() {
+            self.detected_angle - pull_angle
+        } else {
+            self.detected_angle + pull_angle
+        };
 
-        if self.angle_setpoint < 0 {
+        if self.angle_setpoint.is_positive() {
+            self.angle_setpoint %= 360;
+        } else {
+            // We need to wrap arround to max angle.
             self.angle_setpoint += 360;
         }
-        //self.next_angle = self.detected_angle + self.interpolation_change;
-        self.angle_setpoint %= 360;
     }
 
     fn rotate_forwards(&mut self) {
@@ -220,43 +216,60 @@ where
 
                     // Are we done?
                     if self.calibration_data.current_step == STEPS_PER_ROTATION as u32 {
+                        self.calibration_data.current_phase = CalibrationPhase::Step4Wait;
+                    }
+                }
+                #[cfg(not(cal_hyst))]
+                CalibrationPhase::Step4Wait => {
+                    // No additional step, complete
+                    self.calibration_data.calibrated = true;
+                    self.mode = Mode::Normal;
+                }
+                #[cfg(cal_hyst)]
+                CalibrationPhase::Step4Wait => {
+                    // Lets wait so the data can be retrieved.
+                }
+                #[cfg(cal_hyst)]
+                CalibrationPhase::Step5CalibratingBackward => {
+                    self.rotate_backwards();
+
+                    // Are we done?
+                    if self.calibration_data.current_step == 0 as u32 {
                         self.calibration_data.calibrated = true;
                         self.mode = Mode::Normal;
-                        //self.calibration_data.current_phase = CalibrationPhase::Step4Wait;
                     }
-                } // CalibrationPhase::Step4Wait => {
-                  //     // Lets wait so the data can be retrieved.
-                  // }
-                  // CalibrationPhase::Step5CalibratingBackward => {
-                  //     self.rotate_backwards();
 
-                  //     // Are we done?
-                  //     if self.calibration_data.current_step == 0 as u32 {
-                  //         self.calibration_data.calibrated = true;
-                  //         self.mode = Mode::Normal;
-                  //     }
-
-                  //     // Each 90 degree is a step -> step at: 0, 90, 180, 270
-                  //     if self.angle_setpoint % 90 == 0 {
-                  //         self.calibration_data.current_step -= 1;
-                  //     }
-                  // }
+                    // Each 90 degree is a step -> step at: 0, 90, 180, 270
+                    if self.angle_setpoint % 90 == 0 {
+                        self.calibration_data.current_step -= 1;
+                    }
+                }
             }
         }
     }
 
+    #[cfg(not(cal_hyst))]
     pub fn start_calibration(&mut self) {
-        // if let Mode::Calibration = self.mode {
-        //     // Continue
-        //     self.calibration_data.current_phase = CalibrationPhase::Step5CalibratingBackward;
-        // } else {
         // Reset
         self.angle_setpoint = 359;
         self.position_input.reset();
         self.calibration_data.reset();
-
         self.mode = Mode::Calibration;
-        //}
+    }
+
+    #[cfg(cal_hyst)]
+    pub fn start_calibration(&mut self) {
+        if let Mode::Calibration = self.mode {
+            // Continue
+            self.calibration_data.current_phase = CalibrationPhase::Step5CalibratingBackward;
+        } else {
+            // Reset
+            self.angle_setpoint = 359;
+            self.position_input.reset();
+            self.calibration_data.reset();
+
+            self.mode = Mode::Calibration;
+        }
     }
 
     pub fn angle(&self) -> i32 {

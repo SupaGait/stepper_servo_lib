@@ -154,6 +154,7 @@ where
     pub fn calibrate(&mut self) {
         self.control_type = ControlType::Calibration;
         self.position_control.start_calibration();
+        self.enable(true);
     }
     pub fn force_duty(&mut self, duty: i32) {
         self.coil_a.current_control().force_duty(duty);
