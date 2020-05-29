@@ -137,21 +137,31 @@ where
     }
 
     fn calculate_next_angle(&mut self) {
-        const COIL_PULL_ANGLE: i32 = 90;
+        const COIL_MAX_PULL_ANGLE: i32 = 60;
+        const HALF_COIL_MAX_PULL_ANGLE: i32 = COIL_MAX_PULL_ANGLE / 2;
 
         let position_diff = self.get_current_position() - self.setpoint;
         // @ 20kHz, 200steps
         // 20_000 / 360 = 55.5 => / 200 = 0.3 rotation
         // Move new angle based on speed
+
+        // Prevent ossilations, reduce the pull as we are close.
+        let diff = position_diff.abs();
+        let pull_angle = match diff {
+            0 | 1 => 0,
+            2..=HALF_COIL_MAX_PULL_ANGLE => diff * 2,
+            _ => COIL_MAX_PULL_ANGLE,
+        };
+
         if position_diff > 0 {
             //self.next_angle -= 1 * self.speed
             //self.interpolation_change -= 1;
-            self.angle_setpoint = self.detected_angle - COIL_PULL_ANGLE;
+            self.angle_setpoint = self.detected_angle - pull_angle;
         }
         if position_diff < 0 {
             //self.next_angle += 1 * self.speed
             //self.interpolation_change += 1;
-            self.angle_setpoint = self.detected_angle + COIL_PULL_ANGLE;
+            self.angle_setpoint = self.detected_angle + pull_angle;
         }
 
         if self.angle_setpoint < 0 {
