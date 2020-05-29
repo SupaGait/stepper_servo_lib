@@ -54,6 +54,12 @@ mod tests {
         fn enable(&mut self, _enable: bool) {
             todo!()
         }
+        fn update(&mut self, _dt: u32) {
+            todo!()
+        }
+        fn force_duty(&mut self, _duty: i32) {
+            todo!()
+        }
     }
 
     // #[test]

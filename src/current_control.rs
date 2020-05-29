@@ -210,7 +210,8 @@ mod tests {
 
         let shunt_resistance = 400;
         let target_current_mA = 10;
-        let mut currentcontrol = CurrentControl::new(shunt_resistance, mock_current_ouput);
+        let mut currentcontrol =
+            CurrentControl::new(shunt_resistance, mock_current_ouput, 0, 2_u32.pow(12));
         currentcontrol.set_current(target_current_mA);
         currentcontrol.set_controller_p(10);
         currentcontrol.set_controller_i(0);
@@ -219,7 +220,7 @@ mod tests {
 
         //for _ in 0..3 {
         let mV = 1;
-        currentcontrol.update(1, 1, mV);
+        currentcontrol.update(1);
         //}
 
         let current_mA = mV * 1000 / shunt_resistance as i32;
