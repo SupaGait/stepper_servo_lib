@@ -1,10 +1,11 @@
 #![cfg_attr(not(test), no_std)]
 
-pub mod motor_control;
+pub mod calibration;
+pub mod coil;
 pub mod current_control;
+pub mod motor_control;
+pub mod pid;
 pub mod position_control;
 pub mod serial_commands;
-pub mod util;
-pub mod pid;
-pub mod coil;
 pub mod sine_lookup;
+pub mod util;

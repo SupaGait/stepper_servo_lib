@@ -1,11 +1,6 @@
-//const DEGREES_PER_ENCODER_PULSE: i32 = 36;
-const PULSES_PER_ROTATION: usize = 600 * 4;
-//const CAL_SAMPLES_PER_STEP: usize = 4;
+use crate::calibration::{Calibration, DebugCalibrationData};
 
-const ROTOR_TEETH: usize = 50;
-const ROTOR_POLES: usize = 2;
-const STEPS_PER_POLE: usize = 2; // Bipolar.
-const STEPS_PER_ROTATION: usize = ROTOR_TEETH * ROTOR_POLES * STEPS_PER_POLE;
+const PULSES_PER_ROTATION: usize = 600 * 4;
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -24,50 +19,9 @@ enum Mode {
     Calibration,
 }
 
-pub struct DebugCalibrationData {
-    pub pulse_at_angle: [i32; PULSES_PER_ROTATION],
-}
-
-static mut DEBUG_CALIBRATION_DATA: DebugCalibrationData = DebugCalibrationData {
-    pulse_at_angle: [0; PULSES_PER_ROTATION],
-};
-
-enum CalibrationPhase {
-    Step1Backwards,
-    Step2Forwards,
-    Step3CalibratingForward,
-    Step4Wait,
-    #[cfg(cal_hyst)]
-    Step5CalibratingBackward,
-}
-struct CalibrationData {
-    slow_iteration: u32,
-    current_step: u32,
-    current_phase: CalibrationPhase,
-    calibrated: bool,
-    //position_data: [i32; PULSES_PER_ROTATION],
-}
-impl CalibrationData {
-    fn reset(&mut self) {
-        *self = Self::default();
-    }
-}
-
-impl Default for CalibrationData {
-    fn default() -> Self {
-        Self {
-            slow_iteration: 0,
-            current_step: 0,
-            current_phase: CalibrationPhase::Step1Backwards,
-            calibrated: false,
-            //position_data: [0; PULSES_PER_ROTATION],
-        }
-    }
-}
-
 pub struct PositionControl<Input> {
     mode: Mode,
-    calibration_data: CalibrationData,
+    calibration: Calibration,
     control_period: i32,
     position_input: Input,
     setpoint: i32,
@@ -83,7 +37,7 @@ where
     pub fn new(position_input: Input, control_period: i32) -> Self {
         Self {
             mode: Mode::Normal,
-            calibration_data: CalibrationData::default(),
+            calibration: Calibration::default(),
             control_period,
             position_input,
             setpoint: 0,
@@ -94,37 +48,17 @@ where
         }
     }
 
-    pub fn update_position(&mut self) {
-        self.position_input.update();
-
-        let position = self.position_input.get_position();
-        let position = if position > 0 {
-            position as usize % PULSES_PER_ROTATION
-        } else {
-            //PULSES_PER_ROTATION - ((position * -1) as usize % PULSES_PER_ROTATION)
-            PULSES_PER_ROTATION - 1 - ((position % PULSES_PER_ROTATION as i32) * -1) as usize
-        };
-
-        unsafe {
-            self.detected_angle = DEBUG_CALIBRATION_DATA.pulse_at_angle[position];
-        }
-        // match self.position_input.get_direction() {
-        //     Direction::Increased(_value) => {
-        //         self.detected_angle = self.detected_angle + DEGREES_PER_ENCODER_PULSE;
-        //     }
-        //     Direction::Decreased(_value) => {
-        //         self.detected_angle = self.detected_angle - DEGREES_PER_ENCODER_PULSE;
-        //     }
-        //     _ => (),
-        // }
-        if let Mode::Calibration = self.mode {
-            let position = self.position_input.get_position();
-            if position >= 0 && position < PULSES_PER_ROTATION as i32 {
-                unsafe {
-                    DEBUG_CALIBRATION_DATA.pulse_at_angle[position as usize] = self.angle_setpoint;
-                }
-            }
-        }
+    pub fn angle(&self) -> i32 {
+        self.angle_setpoint
+    }
+    pub fn set_position(&mut self, position: i32) {
+        self.setpoint = position;
+    }
+    pub fn get_current_position(&self) -> i32 {
+        self.position_input.get_position()
+    }
+    pub fn set_speed(&mut self, speed: i32) {
+        self.speed = speed;
     }
     pub fn update(&mut self) {
         match self.mode {
@@ -132,7 +66,36 @@ where
                 self.calculate_next_angle();
             }
             Mode::Calibration => {
-                self.calibrate();
+                self.calibration.update(&mut self.position_input);
+                if self.calibration.isCalibrated() {
+                    self.mode = Mode::Normal;
+                } else {
+                    self.angle_setpoint = self.calibration.requestedAngle();
+                }
+            }
+        }
+    }
+
+    pub fn update_position(&mut self) {
+        self.position_input.update();
+
+        let position = self.position_input.get_position();
+        let position = if position > 0 {
+            position as usize % PULSES_PER_ROTATION
+        } else {
+            PULSES_PER_ROTATION - 1 - ((position % PULSES_PER_ROTATION as i32) * -1) as usize
+        };
+
+        match self.mode {
+            Mode::Normal => {
+                self.detected_angle = self.calibration.angle_at_position(position);
+            }
+            Mode::Calibration => {
+                let position = self.position_input.get_position();
+                if position >= 0 && position < PULSES_PER_ROTATION as i32 {
+                    self.calibration
+                        .update_position(position as usize, self.angle_setpoint);
+                }
             }
         }
     }
@@ -167,93 +130,11 @@ where
         }
     }
 
-    fn rotate_forwards(&mut self) {
-        self.angle_setpoint = if self.angle_setpoint < 359 {
-            self.angle_setpoint + 1
-        } else {
-            0
-        };
-    }
-
-    fn rotate_backwards(&mut self) {
-        if self.angle_setpoint > 0 {
-            self.angle_setpoint -= 1;
-        } else {
-            self.angle_setpoint = 359;
-        };
-    }
-    pub fn calibrate(&mut self) {
-        //Slowly step through the full range and save angles.
-        if self.calibration_data.slow_iteration < 10 {
-            self.calibration_data.slow_iteration += 1;
-        } else {
-            self.calibration_data.slow_iteration = 0;
-
-            match self.calibration_data.current_phase {
-                // Expect angle = 359
-                CalibrationPhase::Step1Backwards => {
-                    self.rotate_backwards();
-                    if self.angle_setpoint == 0 {
-                        self.calibration_data.current_phase = CalibrationPhase::Step2Forwards;
-                    }
-                }
-                CalibrationPhase::Step2Forwards => {
-                    self.rotate_forwards();
-                    if self.angle_setpoint == 0 {
-                        self.position_input.reset();
-                        self.calibration_data.reset();
-                        self.calibration_data.current_phase =
-                            CalibrationPhase::Step3CalibratingForward;
-                    }
-                }
-                CalibrationPhase::Step3CalibratingForward => {
-                    self.rotate_forwards();
-
-                    // Each 90 degree is a step -> step at: 0, 90, 180, 270
-                    if self.angle_setpoint % 90 == 0 {
-                        self.calibration_data.current_step += 1;
-                    }
-
-                    // Are we done?
-                    if self.calibration_data.current_step == STEPS_PER_ROTATION as u32 {
-                        self.calibration_data.current_phase = CalibrationPhase::Step4Wait;
-                    }
-                }
-                #[cfg(not(cal_hyst))]
-                CalibrationPhase::Step4Wait => {
-                    // No additional step, complete
-                    self.calibration_data.calibrated = true;
-                    self.mode = Mode::Normal;
-                }
-                #[cfg(cal_hyst)]
-                CalibrationPhase::Step4Wait => {
-                    // Lets wait so the data can be retrieved.
-                }
-                #[cfg(cal_hyst)]
-                CalibrationPhase::Step5CalibratingBackward => {
-                    self.rotate_backwards();
-
-                    // Are we done?
-                    if self.calibration_data.current_step == 0 as u32 {
-                        self.calibration_data.calibrated = true;
-                        self.mode = Mode::Normal;
-                    }
-
-                    // Each 90 degree is a step -> step at: 0, 90, 180, 270
-                    if self.angle_setpoint % 90 == 0 {
-                        self.calibration_data.current_step -= 1;
-                    }
-                }
-            }
-        }
-    }
-
     #[cfg(not(cal_hyst))]
     pub fn start_calibration(&mut self) {
         // Reset
-        self.angle_setpoint = 359;
         self.position_input.reset();
-        self.calibration_data.reset();
+        self.calibration.reset();
         self.mode = Mode::Calibration;
     }
 
@@ -264,31 +145,16 @@ where
             self.calibration_data.current_phase = CalibrationPhase::Step5CalibratingBackward;
         } else {
             // Reset
-            self.angle_setpoint = 359;
             self.position_input.reset();
             self.calibration_data.reset();
-
             self.mode = Mode::Calibration;
         }
     }
-
-    pub fn angle(&self) -> i32 {
-        self.angle_setpoint
-    }
-    pub fn set_position(&mut self, position: i32) {
-        self.setpoint = position;
-    }
-    pub fn get_current_position(&self) -> i32 {
-        self.position_input.get_position()
-    }
-    pub fn set_speed(&mut self, speed: i32) {
-        self.speed = speed;
-    }
     pub fn get_calibration_data(&self) -> &DebugCalibrationData {
-        unsafe { &DEBUG_CALIBRATION_DATA }
+        self.calibration.get_calibration_data()
     }
     pub fn calibration_is_done(&self) -> bool {
-        self.calibration_data.calibrated
+        self.calibration.isCalibrated()
     }
 }
 

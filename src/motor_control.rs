@@ -98,7 +98,7 @@ where
                 UPDATE_PERIOD as u32
             }
             ControlType::Calibration => {
-                self.position_control.calibrate();
+                self.position_control.update();
 
                 if self.position_control.calibration_is_done() {
                     self.enable(false);
