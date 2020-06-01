@@ -61,11 +61,11 @@ impl Calibration {
         unsafe { &DEBUG_CALIBRATION_DATA }
     }
 
-    pub fn isCalibrated(&self) -> bool {
+    pub fn is_calibrated(&self) -> bool {
         self.calibrated
     }
 
-    pub fn requestedAngle(&self) -> i32 {
+    pub fn requested_angle(&self) -> i32 {
         self.angle_setpoint
     }
 

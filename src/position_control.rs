@@ -22,29 +22,29 @@ enum Mode {
 pub struct PositionControl<Input> {
     mode: Mode,
     calibration: Calibration,
-    control_period: i32,
+    //control_period: i32,
     position_input: Input,
     setpoint: i32,
     speed: i32,
     detected_angle: i32,
     angle_setpoint: i32,
-    interpolation_change: i32,
+    //interpolation_change: i32,
 }
 impl<Input> PositionControl<Input>
 where
     Input: PositionInput,
 {
-    pub fn new(position_input: Input, control_period: i32) -> Self {
+    pub fn new(position_input: Input, _control_period: i32) -> Self {
         Self {
             mode: Mode::Normal,
             calibration: Calibration::default(),
-            control_period,
+            //control_period,
             position_input,
             setpoint: 0,
             speed: 0,
             detected_angle: 0,
             angle_setpoint: 0,
-            interpolation_change: 0,
+            //interpolation_change: 0,
         }
     }
 
@@ -67,10 +67,10 @@ where
             }
             Mode::Calibration => {
                 self.calibration.update(&mut self.position_input);
-                if self.calibration.isCalibrated() {
+                if self.calibration.is_calibrated() {
                     self.mode = Mode::Normal;
                 } else {
-                    self.angle_setpoint = self.calibration.requestedAngle();
+                    self.angle_setpoint = self.calibration.requested_angle();
                 }
             }
         }
@@ -101,7 +101,7 @@ where
     }
 
     fn calculate_next_angle(&mut self) {
-        const COIL_MAX_PULL_ANGLE: i32 = 60;
+        const COIL_MAX_PULL_ANGLE: i32 = 90;
         const HALF_COIL_MAX_PULL_ANGLE: i32 = COIL_MAX_PULL_ANGLE / 2;
 
         let position = self.get_current_position();
@@ -154,7 +154,7 @@ where
         self.calibration.get_calibration_data()
     }
     pub fn calibration_is_done(&self) -> bool {
-        self.calibration.isCalibrated()
+        self.calibration.is_calibrated()
     }
 }
 
