@@ -4,6 +4,7 @@ use crate::util;
 pub trait CurrentOutput {
     fn set_output_value(&mut self, value: i32);
     fn enable(&mut self, enable: bool);
+    fn get_max_output_value(&mut self) -> i32;
 }
 
 pub trait CurrentDevice {
@@ -23,7 +24,6 @@ pub trait PIDControl {
 const ADC_BUFFER_SIZE: usize = 1;
 const PID_SCALING_FACTOR: i32 = 100_000;
 const PID_I_SCALE_FACTOR: i32 = 100;
-const MAX_DUTY_CYCLE: i32 = 2300; // +-500mA @ 20khz
 
 /// For now hard bound to ADC1
 pub struct CurrentControl<T: CurrentOutput> {
@@ -61,8 +61,8 @@ impl<T: CurrentOutput> CurrentControl<T> {
             no_pid_control: false,
         };
         s.pid.set_limits(
-            -MAX_DUTY_CYCLE * PID_SCALING_FACTOR,
-            MAX_DUTY_CYCLE * PID_SCALING_FACTOR,
+            -s.output.get_max_output_value() * PID_SCALING_FACTOR,
+            s.output.get_max_output_value() * PID_SCALING_FACTOR,
         );
         s
     }
@@ -123,7 +123,11 @@ impl<T: CurrentOutput> CurrentControl<T> {
                 PID_I_SCALE_FACTOR,
             ) / PID_SCALING_FACTOR;
 
-            self.output_value = util::clamp(-MAX_DUTY_CYCLE, MAX_DUTY_CYCLE, self.output_value);
+            self.output_value = util::clamp(
+                -self.output.get_max_output_value(),
+                self.output.get_max_output_value(),
+                self.output_value,
+            );
         }
         self.output.set_output_value(self.output_value);
     }
@@ -161,7 +165,7 @@ impl<T: CurrentOutput> CurrentDevice for CurrentControl<T> {
     }
     fn force_duty(&mut self, duty: i32) {
         self.no_pid_control = true;
-        self.output_value = duty.min(MAX_DUTY_CYCLE);
+        self.output_value = duty.min(self.output.get_max_output_value());
         self.output.enable(true);
     }
 }
