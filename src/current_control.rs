@@ -206,6 +206,10 @@ mod tests {
         fn enable(&mut self, _enable: bool) {
             // Nothing to do
         }
+
+        fn get_max_output_value(&mut self) -> i32 {
+        todo!()
+    }
     }
 
     #[test]

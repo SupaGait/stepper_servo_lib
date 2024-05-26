@@ -1,6 +1,6 @@
 use crate::calibration::{Calibration, DebugCalibrationData};
 
-const PULSES_PER_ROTATION: usize = 600 * 4;
+pub const PULSES_PER_ROTATION: usize = 2048;
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -12,7 +12,6 @@ pub trait PositionInput {
     fn update(&mut self);
     fn reset(&mut self);
     fn get_position(&self) -> i32;
-    fn get_direction(&self) -> Direction;
 }
 enum Mode {
     Normal,
@@ -107,7 +106,7 @@ where
         let position = self.get_current_position();
         let position_diff = position - self.setpoint;
 
-        // Prevent ossilations, reduce the pull as we are close.
+        // Prevent oscillations, reduce the pull as we are close.
         let diff = position_diff.abs();
         let pull_angle = match diff {
             0 | 1 => 0,
@@ -174,9 +173,6 @@ mod tests {
         fn get_position(&self) -> i32 {
             self.position
         }
-        fn get_direction(&self) -> Direction {
-            self.direction
-        }
     }
 
     #[test]
@@ -193,7 +189,7 @@ mod tests {
         position_control.update();
 
         let next_angle = position_control.angle();
-        assert_eq!(0 + DEGREES_PER_ENCODER_PULSE, next_angle);
+        assert_eq!(90, next_angle);
     }
 
     #[test]
@@ -210,6 +206,6 @@ mod tests {
         position_control.update();
 
         let next_angle = position_control.angle();
-        assert_eq!(360 - DEGREES_PER_ENCODER_PULSE, next_angle);
+        assert_eq!(-90, next_angle);
     }
 }

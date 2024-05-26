@@ -1,6 +1,5 @@
-use crate::position_control::PositionInput;
+use crate::position_control::{PositionInput, PULSES_PER_ROTATION};
 
-const PULSES_PER_ROTATION: usize = 600 * 4;
 const ROTOR_TEETH: usize = 50;
 const ROTOR_POLES: usize = 2;
 const STEPS_PER_POLE: usize = 2; // Bipolar.
@@ -27,6 +26,7 @@ pub struct Calibration {
     current_step: u32,
     current_phase: CalibrationPhase,
     calibrated: bool,
+    last_position: usize,
     //position_data: [i32; PULSES_PER_ROTATION],
 }
 
@@ -38,6 +38,7 @@ impl Default for Calibration {
             current_step: 0,
             current_phase: CalibrationPhase::Step1Backwards,
             calibrated: false,
+            last_position: 0,
             //position_data: [0; PULSES_PER_ROTATION],
         }
     }
@@ -52,8 +53,12 @@ impl Calibration {
     }
 
     pub fn update_position(&mut self, position: usize, angle: i32) {
-        unsafe {
-            DEBUG_CALIBRATION_DATA.pulse_at_angle[position as usize] = angle;
+        // Update changes
+        if position != self.last_position {
+            self.last_position = position;
+            unsafe {
+                DEBUG_CALIBRATION_DATA.pulse_at_angle[position] = angle;
+            }
         }
     }
 
@@ -90,7 +95,7 @@ impl Calibration {
         T: PositionInput,
     {
         //Slowly step through the full range and save angles.
-        if self.slow_iteration < 10 {
+        if self.slow_iteration < 1 {
             self.slow_iteration += 1;
         } else {
             self.slow_iteration = 0;

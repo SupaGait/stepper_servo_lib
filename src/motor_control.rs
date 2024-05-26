@@ -3,8 +3,9 @@ use crate::current_control::{CurrentDevice, PIDControl};
 use crate::position_control::{PositionControl, PositionInput};
 //use crate::pid::{Controller, PIDController};
 
-const DWT_FREQ: i32 = 72_000_000;
-const UPDATE_PERIOD: i32 = DWT_FREQ / 20_000;
+const DWT_FREQ: u32 = 72_000_000;
+const UPDATE_PERIOD: u32 = DWT_FREQ / 5_000;
+const CALIBRATION_PERIOD: u32 = DWT_FREQ / 1_000;
 
 pub trait PositionControlled {
     fn set_angle(&mut self, degrees: i32);
@@ -44,7 +45,7 @@ where
         Self {
             coil_a: Coil::<T1>::new(output_coil_a),
             coil_b: Coil::<T2>::new(output_coil_b),
-            position_control: PositionControl::<Inp>::new(position_input, UPDATE_PERIOD),
+            position_control: PositionControl::<Inp>::new(position_input, UPDATE_PERIOD as i32),
             angle_setpoint: 0,
             current: 0,
             rotate_speed: 10,
@@ -108,7 +109,7 @@ where
                     self.set_angle(angle);
                 }
 
-                UPDATE_PERIOD as u32
+                CALIBRATION_PERIOD
             }
         }
     }
